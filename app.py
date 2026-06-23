@@ -108,7 +108,7 @@ def convertir_en_lien_direct(url):
 # PARTIE 1 : INTERFACE DES RAPPORTS
 # ==========================================
 with tab1:
-    st.markdown("### Filtres de recherche")
+    st.markdown("### 🎛️ Filtres de Recherche Avancés")
     
     with st.container(border=True):
         c1, c2, c3, c4 = st.columns(4)
@@ -134,24 +134,36 @@ with tab1:
         if f_sous_eq != "Tous" and "Sous-équipement" in df_f.columns: 
             df_f = df_f[df_f["Sous-équipement"].astype(str) == f_sous_eq]
 
-    st.markdown("### 📋 Documents rattachés")
+    st.markdown("### 📋 Documents Rattachés")
     
     if not df_f.empty:
-        # 2. APPLICATION DE LA TRANSFORMATION DES LIENS AVANT AFFICHAGE
+        # 2. TRANSFORMATION DES LIENS EN LIENS DE TÉLÉCHARGEMENT DIRECT
         if "Lien PDF" in df_f.columns:
             df_f["Lien PDF"] = df_f["Lien PDF"].apply(convertir_en_lien_direct)
 
-        # 3. Affichage du tableau professionnel
+        # 3. 🛠️ CORRECTION DE LA DATE : Conversion forcée au format Jour/Mois/Année
+        if "Date de dernier contrôle" in df_f.columns:
+            df_f["Date de dernier contrôle"] = pd.to_datetime(
+                df_f["Date de dernier contrôle"], 
+                dayfirst=True,          # Précise que le jour est écrit en premier (format FR)
+                errors='coerce'         # Si une ligne est vide, évite de faire planter l'application
+            )
+
+        # 4. Affichage du tableau professionnel
         st.dataframe(
             df_f,
             column_config={
                 "Lien PDF": st.column_config.LinkColumn(
                     "Action", 
                     display_text="📥 Télécharger",
-                    help="Cliquez pour télécharger directement le rapport PDF sur votre machine"
+                    help="Cliquez pour télécharger directement le rapport PDF"
                 ),
                 "Exercice": st.column_config.NumberColumn("Exercice", format="%d"),
-                "Date de dernier contrôle": st.column_config.DateColumn("Date de dernier contrôle")
+                # Format d'affichage explicite pour Streamlit (JJ/MM/AAAA)
+                "Date de dernier contrôle": st.column_config.DateColumn(
+                    "Date de dernier contrôle",
+                    format="DD/MM/YYYY" 
+                )
             },
             hide_index=True,
             use_container_width=True
