@@ -2,50 +2,82 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-# 1. CONFIGURATION DE LA PAGE
+# 1. CONFIGURATION DE LA PAGE DE DIRECTION
 st.set_page_config(
-    page_title="Contrôle réglementaire",
+    page_title="Contrôle Réglementaire HSE",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # ==========================================
-# ⚠️ REMPLACEZ CE LIEN PAR LE VOTRE ⚠️
+# ⚠️ LIEN DE SYNCHRONISATION GOOGLE SHEETS
 # ==========================================
 URL_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/1ZK6VWg_gcCO70nt6DTyYogDeNeQUgovFmwWQufMVO-M/edit?gid=0#gid=0"
 
-# 2. FONCTION DE CONNEXION DIRECTE ET GRATUITE A GOOGLE SHEETS
-@st.cache_data(ttl=5) # Rafraîchit les données toutes les 5 secondes
+# 2. CHARGEMENT OPTIMISÉ DES DONNÉES
+@st.cache_data(ttl=5)
 def charger_donnees_sheet(nom_onglet):
     try:
-        # Transformation du lien pour télécharger directement le format CSV de l'onglet demandé
         base_url = URL_GOOGLE_SHEET.split("/edit")[0]
         csv_url = f"{base_url}/gviz/tq?tqx=out:csv&sheet={nom_onglet}"
         df = pd.read_csv(csv_url)
-        # Nettoyage des colonnes vides si présentes
         df = df.dropna(how='all')
         return df
     except Exception as e:
-        st.error(f"Erreur de connexion à l'onglet '{nom_onglet}'. Vérifiez le lien de votre Google Sheet.")
+        st.error(f"Erreur de connexion à l'onglet '{nom_onglet}'.")
         return pd.DataFrame()
 
-# Chargement des vraies données en direct
 df_rapports = charger_donnees_sheet("Rapports")
 df_planning = charger_donnees_sheet("Planning")
 
-# 3. DESIGN & STYLE CSS PERSONNALISÉ
+# ==========================================
+# 3. FEUILLE DE STYLE CSS PREMIUM (EXECUTIVE UI)
+# ==========================================
 st.markdown("""
     <style>
-    html, body, [data-testid="stSidebarView"] { background-color: #F8F9FA; }
-    h1 { color: #1E3A8A; font-weight: 700 !important; }
-    h2, h3 { color: #2C3E50; }
-    .stButton>button {
-        background-color: #1E3A8A !important; color: white !important;
-        border-radius: 6px !important; border: none !important;
-        font-weight: 600; transition: all 0.3s ease;
+    /* Importation d'une typographie moderne */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebarView"] {
+        font-family: 'Inter', sans-serif !important;
+        background-color: #F8FAFC !important; /* Fond gris très clair ultra-moderne */
     }
-    .stButton>button:hover { background-color: #3B82F6 !important; transform: translateY(-1px); }
+    
+    /* Design des Onglets (Tabs) */
+    .stTabs [data-baseweb="tab"] {
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: #64748B !important;
+        padding: 12px 20px !important;
+        transition: all 0.3s ease;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #1E3A8A !important;
+    }
+    .stTabs [aria-selected="true"] {
+        color: #1E3A8A !important;
+        border-bottom-color: #1E3A8A !important;
+    }
+
+    /* Style des formulaires et des encadrés */
+    [data-testid="stForm"], .stCornerRadius {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        border-radius: 12px !important;
+    }
+    
+    /* Boutons personnalisés */
+    .stButton>button {
+        background-color: #1E3A8A !important;
+        color: white !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 500 !important;
+        padding: 10px 24px !important;
+        box-shadow: 0 2px 4px rgba(30, 58, 138, 0.2);
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -57,181 +89,216 @@ SOUS_EQUIPEMENTS = {
     "Appareil pression de gaz": []
 }
 
-# --- SIDEBAR ---
+# ==========================================
+# 4. BARRE LATÉRALE (SIDEBAR DESIGN)
+# ==========================================
 with st.sidebar:
-    col1, col2, col3 = st.columns([1, 3, 1]) 
+    st.markdown("<br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 4, 1]) 
     with col2:
-        # Remplacez "logo.png" par le nom exact de votre fichier image dans votre projet
-        st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s", width=150)
+        # Logo de l'entreprise
+        st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s", use_container_width=True)
     
-    # 2. 🎯 CENTRAGE DES TITRES (En HTML pour un contrôle parfait)
     st.markdown(
         """
         <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
-            <h3 style="font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; line-height: 1.2; color: #31333F;">
+            <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 4px; color: #0F172A; letter-spacing: -0.5px;">
                 Tunisie Profilés d'Aluminium
             </h3>
-            <p style="font-size: 0.9rem; color: #666666; margin: 0; font-weight: 500;">
-                Direction Maintenance et Travaux Neufs
+            <p style="font-size: 0.85rem; color: #64748B; margin: 0; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">
+                Direction Maintenance & TN
             </p>
         </div>
         """,
         unsafe_allow_html=True
     )
     st.divider()
-    st.markdown("### **Espace sécurisé**")
-    role = st.selectbox("Profil utilisateur :", ["Visiteur", "Responsable"])
+    
+    st.markdown("<p style='font-weight: 600; color: #334155; margin-bottom: 0;'>🔐 Espace sécurisé</p>", unsafe_allow_html=True)
+    role = st.selectbox("Profil utilisateur :", ["Visiteur", "Responsable"], label_visibility="collapsed")
     
     password_correct = False
     if role == "Responsable":
-        password = st.text_input("Code d'accès :", type="password")
+        password = st.text_input("Code d'accès :", type="password", placeholder="•••")
         if password == "admin123*":
             password_correct = True
-            st.success("Accès admin activé")
+            st.success("Accès administrateur validé")
         elif password:
-            st.error("Code incorrect")
+            st.error("Code d'accès incorrect")
 
-# --- EN-TÊTE ---
 # ==========================================
-# EN-TÊTE DE LA PAGE (CENTRALISÉ)
+# 5. EN-TÊTE DE PAGE CENTRALISÉ
 # ==========================================
 st.markdown(
     """
-    <div style="text-align: center; margin-top: -10px; margin-bottom: 30px;">
-        <h1 style="font-size: 2.8rem; font-weight: bold; color: #31333F; margin-bottom: 8px;">
-            Contrôle réglementaire
+    <div style="text-align: center; margin-top: 10px; margin-bottom: 35px;">
+        <h1 style="font-size: 2.6rem; font-weight: 800; color: #0F172A; margin-bottom: 6px; letter-spacing: -1px;">
+            Tableau de Bord Réglementaire
         </h1>
-        <p style="font-size: 1.05rem; color: #666666; margin: 0; font-weight: 400;">
-            Plateforme synchronisée en temps réel avec Google Sheets — Accès par QR Code
+        <p style="font-size: 1.05rem; color: #64748B; margin: 0; font-weight: 400;">
+            Suivi HSE de conformité en temps réel — Synchronisé avec Direction Maintenance
         </p>
     </div>
     """,
     unsafe_allow_html=True
 )
 
-# --- BANDEAU DE MÉTRIQUES ---
-m1, m2, m3 = st.columns(3)
-with m1:
-    st.metric(label="Total rapports archivés", value=len(df_rapports) if not df_rapports.empty else 0)
-with m2:
-    st.metric(label="Contrôles planifiés", value=len(df_planning) if not df_planning.empty else 0)
-with m3:
-    if not df_planning.empty and "Statut" in df_planning.columns:
-        non_conf = len(df_planning[df_planning["Statut"] == "Non conforme"])
-    else:
-        non_conf = 0
-    st.metric(label="Alertes non-conformité", value=non_conf, delta=-non_conf if non_conf > 0 else 0, delta_color="inverse")
+# ==========================================
+# 6. BANDEAU DE CARTES KPI DESIGN CORPO (PREMIUM)
+# ==========================================
+val_total_rapports = len(df_rapports) if not df_rapports.empty else 0
+val_controles_planifies = len(df_planning) if not df_planning.empty else 0
 
-st.markdown("---")
-tab1, tab2 = st.tabs(["Rapports de contrôle", "Suivi de performance & planning"])
+if not df_planning.empty and "Statut" in df_planning.columns:
+    val_alertes = len(df_planning[df_planning["Statut"].astype(str).str.strip().str.lower() == "non conforme"])
+else:
+    val_alertes = 0
 
-# --- FONCTION DE TRANSFORMATION POUR TÉLÉCHARGEMENT DIRECT ---
+# Génération des cartes via colonnes et blocs HTML raffinés
+kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
+
+with kpi_col1:
+    st.markdown(f"""
+        <div style="background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border-left: 5px solid #1E3A8A;">
+            <p style="margin:0; font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Total Rapports Archivés</p>
+            <p style="margin:8px 0 0 0; font-size: 34px; color: #0F172A; font-weight: 700; line-height: 1;">{val_total_rapports}</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+with kpi_col2:
+    st.markdown(f"""
+        <div style="background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border-left: 5px solid #0EA5E9;">
+            <p style="margin:0; font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Contrôles Planifiés</p>
+            <p style="margin:8px 0 0 0; font-size: 34px; color: #0F172A; font-weight: 700; line-height: 1;">{val_controles_planifies}</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+with kpi_col3:
+    couleur_alerte = "#EF4444" if val_alertes > 0 else "#10B981"
+    st.markdown(f"""
+        <div style="background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border-left: 5px solid {couleur_alerte};">
+            <p style="margin:0; font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Alertes Non-Conformité</p>
+            <p style="margin:8px 0 0 0; font-size: 34px; color: {couleur_alerte}; font-weight: 700; line-height: 1;">{val_alertes}</p>
+        </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# Navigation principale par onglets
+tab1, tab2 = st.tabs(["📋 Rapports de contrôle archivés", "📅 Suivi de performance & Planification"])
+
+# FONCTION LIEN DIRECT DRIVE
 def convertir_en_lien_direct(url):
-    """Transforme un lien de visualisation Google Drive en lien de téléchargement direct"""
     try:
         if "drive.google.com" in str(url) and "/file/d/" in str(url):
-            # Extraction de l'ID unique du fichier PDF
             id_fichier = str(url).split("/file/d/")[1].split("/")[0]
-            # Création du lien de téléchargement forcé
             return f"https://drive.google.com/uc?export=download&id={id_fichier}"
     except Exception:
         pass
-    return url # Retourne le lien normal si ce n'est pas du Google Drive
+    return url
 
 # ==========================================
 # PARTIE 1 : INTERFACE DES RAPPORTS
 # ==========================================
 with tab1:
-    st.markdown("### Filtres de recherche")
-    
+    # Conteneur des filtres épuré
     with st.container(border=True):
+        st.markdown("<p style='font-weight: 600; color: #1E293B; margin-top:0; margin-bottom: 10px;'>🎛️ Filtres de recherche avancés</p>", unsafe_allow_html=True)
         c1, c2, c3, c4 = st.columns(4)
         with c1:
             f_site = st.selectbox("Site", ["Tous", "SGB", "MEG"])
         with c2:
-            f_annee = st.selectbox("Année", ["Tous", "2025", "2026"])
+            f_annee = st.selectbox("Année de l'exercice", ["Tous", "2025", "2026"])
         with c3:
             f_cat = st.selectbox("Domaine technique", ["Tous"] + list(SOUS_EQUIPEMENTS.keys()))
         with c4:
             opts = ["Tous"] + SOUS_EQUIPEMENTS[f_cat] if f_cat != "Tous" else ["Tous"] + [i for sub in SOUS_EQUIPEMENTS.values() for i in sub]
             f_sous_eq = st.selectbox("Sous-équipement", opts)
 
-    # 1. Filtrage des données (Sécurisé et nettoyé)
+    st.markdown("<br><p style='font-size: 1.2rem; font-weight: 700; color: #0F172A; margin-bottom:10px;'>📂 Documents rattachés</p>", unsafe_allow_html=True)
+    
+    # Filtrage intelligent
     df_f = df_rapports.copy()
     if not df_f.empty:
-        # Filtre Site (avec retrait des espaces masqués pour éviter les bugs)
-        if f_site != "Tous" and "Site" in df_f.columns: 
-            df_f = df_f[df_f["Site"].astype(str).str.strip() == f_site]
-            
-        # 🛠️ CORRECTION DU FILTRE ANNÉE : Conversion numérique des deux côtés pour ignorer le ".0"
-        if f_annee != "Tous" and "Année" in df_f.columns: 
-            df_f = df_f[pd.to_numeric(df_f["Année"], errors='coerce') == int(f_annee)]
-            
-        # Filtre Catégorie
-        if f_cat != "Tous" and "Catégorie" in df_f.columns: 
-            df_f = df_f[df_f["Catégorie"].astype(str).str.strip() == f_cat]
-            
-        # Filtre Sous-équipement
-        if f_sous_eq != "Tous" and "Sous-équipement" in df_f.columns: 
-            df_f = df_f[df_f["Sous-équipement"].astype(str).str.strip() == f_sous_eq]
+        # Identification dynamique des colonnes de l'utilisateur (Robustesse)
+        col_site = [c for c in df_f.columns if "site" in c.lower()]
+        col_ex = [c for c in df_f.columns if "exerc" in c.lower() or "ann" in c.lower()]
+        col_cat = [c for c in df_f.columns if "cat" in c.lower()]
+        col_seq = [c for c in df_f.columns if "sous" in c.lower()]
+        col_lien = [c for c in df_f.columns if "lien" in c.lower() or "pdf" in c.lower()]
+        col_date = [c for c in df_f.columns if "date" in c.lower() or "contr" in c.lower()]
 
-    st.markdown("### Documents rattachés")
-    
+        if f_site != "Tous" and col_site:
+            df_f = df_f[df_f[col_site[0]].astype(str).str.strip() == f_site]
+            
+        if f_annee != "Tous" and col_ex:
+            df_f = df_f[pd.to_numeric(df_f[col_ex[0]], errors='coerce') == int(f_annee)]
+            
+        if f_cat != "Tous" and col_cat:
+            df_f = df_f[df_f[col_cat[0]].astype(str).str.strip() == f_cat]
+            
+        if f_sous_eq != "Tous" and col_seq:
+            df_f = df_f[df_f[col_seq[0]].astype(str).str.strip() == f_sous_eq]
+
     if not df_f.empty:
-        # 2. TRANSFORMATION DES LIENS EN LIENS DE TÉLÉCHARGEMENT DIRECT
-        if "Lien PDF" in df_f.columns:
-            df_f["Lien PDF"] = df_f["Lien PDF"].apply(convertir_en_lien_direct)
+        # Nettoyage des formats pour l'affichage directionnel
+        if col_lien:
+            df_f[col_lien[0]] = df_f[col_lien[0]].apply(convertir_en_lien_direct)
 
-        # 3. CORRECTION DE LA DATE : Conversion forcée au format Jour/Mois/Année
-        if "Date de dernier contrôle" in df_f.columns:
-            df_f["Date de dernier contrôle"] = pd.to_datetime(
-                df_f["Date de dernier contrôle"], 
-                dayfirst=True,
-                errors='coerce'
-            )
+        if col_date:
+            df_f[col_date[0]] = pd.to_datetime(df_f[col_date[0]], dayfirst=True, errors='coerce')
 
-        # 4. Affichage du tableau professionnel
+        nom_col_ex = col_ex[0] if col_ex else "Exercice"
+        nom_col_date = col_date[0] if col_date else "Date de dernier contrôle"
+        nom_col_lien = col_lien[0] if col_lien else "Lien PDF"
+
+        # Affichage du tableau de données haute fidélité
         st.dataframe(
             df_f,
             column_config={
-                "Lien PDF": st.column_config.LinkColumn(
+                nom_col_lien: st.column_config.LinkColumn(
                     "Action", 
-                    display_text="📥 Télécharger",
-                    help="Cliquez pour télécharger directement le rapport PDF"
+                    display_text="📥 Télécharger PDF",
+                    help="Télécharger directement le rapport officiel validé"
                 ),
-                "Exercice": st.column_config.NumberColumn("Exercice", format="%d"),
-                "Date de dernier contrôle": st.column_config.DateColumn(
-                    "Date de dernier contrôle",
-                    format="DD/MM/YYYY" 
-                )
+                nom_col_ex: st.column_config.NumberColumn("Exercice", format="%d"),
+                nom_col_date: st.column_config.DateColumn("Date de dernier contrôle", format="DD/MM/YYYY")
             },
             hide_index=True,
             use_container_width=True
         )
     else:
-        st.warning("Aucun rapport ne correspond à vos filtres actuels ou la base de données est vide.")
+        st.warning("Aucun rapport ne correspond aux critères sélectionnés.")
 
+    # Panneau d'administration épuré
     if role == "Responsable" and password_correct:
-        with st.expander("Panneau d'administration"):
-            st.markdown(f"[Ouvrir le Google Sheets pour ajouter/modifier des rapports]({URL_GOOGLE_SHEET})")
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander("🛠️ Panneau d'administration (Accès Base de Données)"):
+            st.markdown(f"En tant que responsable, vous pouvez modifier directement le registre : [Ouvrir le Google Sheets externe]({URL_GOOGLE_SHEET})")
+
 # ==========================================
 # PARTIE 2 : MAÎTRISE & PLANNING
 # ==========================================
 with tab2:
-    st.markdown("### Calendrier de maintenance réglementaire")
+    st.markdown("<p style='font-size: 1.2rem; font-weight: 700; color: #0F172A; margin-bottom:10px;'>📅 Planification des contrôles obligatoires</p>", unsafe_allow_html=True)
     
     if not df_planning.empty:
+        col_prochain = [c for c in df_planning.columns if "prochain" in c.lower() or "échéan" in c.lower()]
+        nom_col_prochain = col_prochain[0] if col_prochain else "Prochain contrôle"
+        
+        # Affichage du tableau du planning
         st.dataframe(
             df_planning,
             column_config={
-                "Prochain_Contrôle": st.column_config.DateColumn("Échéance contrôle"),
+                nom_col_prochain: st.column_config.DateColumn("Échéance contrôle", format="DD/MM/YYYY"),
             },
             hide_index=True,
             use_container_width=True
         )
     else:
-        st.info("Le tableau de planification est vide sur Google Sheets.")
+        st.info("Le calendrier réglementaire n'affiche aucun contrôle futur planifié dans Google Sheets.")
     
     if role == "Responsable" and password_correct:
-        with st.expander("Panneau d'administration"):
-            st.markdown(f"[Ouvrir le Google Sheets pour modifier le planning]({URL_GOOGLE_SHEET})")
+        st.markdown("<br>", unsafe_allow_html=True)
+        with st.expander("🛠️ Panneau d'administration (Gestion du Planning)"):
+            st.markdown(f"Pour ajouter ou modifier des dates d'échéances de contrôle : [Modifier le calendrier Google Sheets]({URL_GOOGLE_SHEET})")
