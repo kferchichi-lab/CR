@@ -122,17 +122,24 @@ with tab1:
             opts = ["Tous"] + SOUS_EQUIPEMENTS[f_cat] if f_cat != "Tous" else ["Tous"] + [i for sub in SOUS_EQUIPEMENTS.values() for i in sub]
             f_sous_eq = st.selectbox("Sous-équipement", opts)
 
-    # 1. Filtrage des données
+    # 1. Filtrage des données (Sécurisé et nettoyé)
     df_f = df_rapports.copy()
     if not df_f.empty:
+        # Filtre Site (avec retrait des espaces masqués pour éviter les bugs)
         if f_site != "Tous" and "Site" in df_f.columns: 
-            df_f = df_f[df_f["Site"].astype(str) == f_site]
+            df_f = df_f[df_f["Site"].astype(str).str.strip() == f_site]
+            
+        # 🛠️ CORRECTION DU FILTRE ANNÉE : Conversion numérique des deux côtés pour ignorer le ".0"
         if f_annee != "Tous" and "Exercice" in df_f.columns: 
-            df_f = df_f[df_f["Exercice"].astype(str) == f_annee]
+            df_f = df_f[pd.to_numeric(df_f["Exercice"], errors='coerce') == int(f_annee)]
+            
+        # Filtre Catégorie
         if f_cat != "Tous" and "Catégorie" in df_f.columns: 
-            df_f = df_f[df_f["Catégorie"].astype(str) == f_cat]
+            df_f = df_f[df_f["Catégorie"].astype(str).str.strip() == f_cat]
+            
+        # Filtre Sous-équipement
         if f_sous_eq != "Tous" and "Sous-équipement" in df_f.columns: 
-            df_f = df_f[df_f["Sous-équipement"].astype(str) == f_sous_eq]
+            df_f = df_f[df_f["Sous-équipement"].astype(str).str.strip() == f_sous_eq]
 
     st.markdown("### 📋 Documents rattachés")
     
@@ -141,12 +148,12 @@ with tab1:
         if "Lien PDF" in df_f.columns:
             df_f["Lien PDF"] = df_f["Lien PDF"].apply(convertir_en_lien_direct)
 
-        # 3. 🛠️ CORRECTION DE LA DATE : Conversion forcée au format Jour/Mois/Année
+        # 3. CORRECTION DE LA DATE : Conversion forcée au format Jour/Mois/Année
         if "Date de dernier contrôle" in df_f.columns:
             df_f["Date de dernier contrôle"] = pd.to_datetime(
                 df_f["Date de dernier contrôle"], 
-                dayfirst=True,          # Précise que le jour est écrit en premier (format FR)
-                errors='coerce'         # Si une ligne est vide, évite de faire planter l'application
+                dayfirst=True,
+                errors='coerce'
             )
 
         # 4. Affichage du tableau professionnel
@@ -159,7 +166,6 @@ with tab1:
                     help="Cliquez pour télécharger directement le rapport PDF"
                 ),
                 "Exercice": st.column_config.NumberColumn("Exercice", format="%d"),
-                # Format d'affichage explicite pour Streamlit (JJ/MM/AAAA)
                 "Date de dernier contrôle": st.column_config.DateColumn(
                     "Date de dernier contrôle",
                     format="DD/MM/YYYY" 
