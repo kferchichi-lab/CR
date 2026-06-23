@@ -94,6 +94,9 @@ tab1, tab2 = st.tabs(["🔍 Registre & Rapports de Contrôle", "📅 Suivi de Pe
 # ==========================================
 # PARTIE 1 : INTERFACE DES RAPPORTS
 # ==========================================
+# ==========================================
+# PARTIE 1 : INTERFACE DES RAPPORTS
+# ==========================================
 with tab1:
     st.markdown("### 🎛️ Filtres de Recherche Avancés")
     
@@ -109,27 +112,32 @@ with tab1:
             opts = ["Tous"] + SOUS_EQUIPEMENTS[f_cat] if f_cat != "Tous" else ["Tous"] + [i for sub in SOUS_EQUIPEMENTS.values() for i in sub]
             f_sous_eq = st.selectbox("Sous-Équipement cible", opts)
 
-    # Filtrage
+    # Filtrage des données (Adapté à vos colonnes exactes)
     df_f = df_rapports.copy()
     if not df_f.empty:
         if f_site != "Tous" and "Site" in df_f.columns: 
             df_f = df_f[df_f["Site"].astype(str) == f_site]
-        if f_annee != "Tous" and "Année" in df_f.columns: 
-            df_f = df_f[df_f["Année"].astype(str) == f_annee]
+        if f_annee != "Tous" and "Exercice" in df_f.columns: 
+            df_f = df_f[df_f["Exercice"].astype(str) == f_annee]
         if f_cat != "Tous" and "Catégorie" in df_f.columns: 
             df_f = df_f[df_f["Catégorie"].astype(str) == f_cat]
-        if f_sous_eq != "Tous" and "Sous-Équipement" in df_f.columns: 
-            df_f = df_f[df_f["Sous-Équipement"].astype(str) == f_sous_eq]
+        if f_sous_eq != "Tous" and "Sous-équipement" in df_f.columns: 
+            df_f = df_f[df_f["Sous-équipement"].astype(str) == f_sous_eq]
 
     st.markdown("### 📋 Documents Rattachés")
     
     if not df_f.empty:
+        # Affichage avec configuration de l'icône de téléchargement
         st.dataframe(
             df_f,
             column_config={
-                "Lien_PDF": st.column_config.LinkColumn("Action / Téléchargement", display_text="📄 Ouvrir le PDF"),
-                "Date_Installation": st.column_config.DateColumn("Date d'Installation"),
-                "Année": st.column_config.NumberColumn("Exercice", format="%d")
+                "Lien PDF": st.column_config.LinkColumn(
+                    "Action", 
+                    display_text="📥 Télécharger",
+                    help="Cliquez pour ouvrir ou imprimer le rapport PDF"
+                ),
+                "Exercice": st.column_config.NumberColumn("Exercice", format="%d"),
+                "Date de dernier contrôle": st.column_config.DateColumn("Date de dernier contrôle")
             },
             hide_index=True,
             use_container_width=True
