@@ -59,15 +59,15 @@ SOUS_EQUIPEMENTS = {
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.markdown("### **Espace Sécurisé**")
+    st.markdown("### **Espace sécurisé**")
     role = st.selectbox("Profil Utilisateur :", ["👤 Visiteur (Lecture seule)", "🔑 Responsable (Admin)"])
     
     password_correct = False
     if role == "🔑 Responsable (Admin)":
         password = st.text_input("Code d'accès :", type="password")
-        if password == "admin123":
+        if password == "admin123*":
             password_correct = True
-            st.success("Accès Admin Activé")
+            st.success("Accès admin activé")
         elif password:
             st.error("Code incorrect")
 
@@ -78,18 +78,18 @@ st.caption("Plateforme synchronisée en temps réel avec Google Sheets — Accè
 # --- BANDEAU DE MÉTRIQUES ---
 m1, m2, m3 = st.columns(3)
 with m1:
-    st.metric(label="Total Rapports Archivés", value=len(df_rapports) if not df_rapports.empty else 0)
+    st.metric(label="Total rapports archivés", value=len(df_rapports) if not df_rapports.empty else 0)
 with m2:
-    st.metric(label="Contrôles Planifiés", value=len(df_planning) if not df_planning.empty else 0)
+    st.metric(label="Contrôles planifiés", value=len(df_planning) if not df_planning.empty else 0)
 with m3:
     if not df_planning.empty and "Statut" in df_planning.columns:
         non_conf = len(df_planning[df_planning["Statut"] == "Non conforme"])
     else:
         non_conf = 0
-    st.metric(label="Alertes Non-Conformité", value=non_conf, delta=-non_conf if non_conf > 0 else 0, delta_color="inverse")
+    st.metric(label="Alertes non-conformité", value=non_conf, delta=-non_conf if non_conf > 0 else 0, delta_color="inverse")
 
 st.markdown("---")
-tab1, tab2 = st.tabs(["🔍 Registre & Rapports de Contrôle", "📅 Suivi de Performance & Planning"])
+tab1, tab2 = st.tabs(["🔍 Rapports de contrôle", "📅 Suivi de performance & planning"])
 
 # --- FONCTION DE TRANSFORMATION POUR TÉLÉCHARGEMENT DIRECT ---
 def convertir_en_lien_direct(url):
@@ -108,7 +108,7 @@ def convertir_en_lien_direct(url):
 # PARTIE 1 : INTERFACE DES RAPPORTS
 # ==========================================
 with tab1:
-    st.markdown("### 🎛️ Filtres de Recherche Avancés")
+    st.markdown("### Filtres de recherche")
     
     with st.container(border=True):
         c1, c2, c3, c4 = st.columns(4)
@@ -134,7 +134,7 @@ with tab1:
         if f_sous_eq != "Tous" and "Sous-équipement" in df_f.columns: 
             df_f = df_f[df_f["Sous-équipement"].astype(str) == f_sous_eq]
 
-    st.markdown("### 📋 Documents Rattachés")
+    st.markdown("### 📋 Documents rattachés")
     
     if not df_f.empty:
         # 2. APPLICATION DE LA TRANSFORMATION DES LIENS AVANT AFFICHAGE
@@ -166,13 +166,13 @@ with tab1:
 # PARTIE 2 : MAÎTRISE & PLANNING
 # ==========================================
 with tab2:
-    st.markdown("### 📆 Calendrier de Maintenance Réglementaire")
+    st.markdown("### 📆 Calendrier de maintenance réglementaire")
     
     if not df_planning.empty:
         st.dataframe(
             df_planning,
             column_config={
-                "Prochain_Contrôle": st.column_config.DateColumn("Échéance Contrôle"),
+                "Prochain_Contrôle": st.column_config.DateColumn("Échéance contrôle"),
             },
             hide_index=True,
             use_container_width=True
