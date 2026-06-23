@@ -92,8 +92,25 @@ with st.sidebar:
             st.error("Code incorrect")
 
 # --- EN-TÊTE ---
-st.title("Contrôle réglementaire")
-st.caption("Plateforme synchronisée en temps réel avec Google Sheets — Accès par QR Code")
+# ==========================================
+# EN-TÊTE DE LA PAGE (CENTRALISÉ)
+# ==========================================
+st.markdown(
+    """
+    <div style="text-align: center; margin-top: -10px; margin-bottom: 30px;">
+        <h1 style="font-size: 2.8rem; font-weight: bold; color: #31333F; margin-bottom: 8px;">
+            Contrôle réglementaire
+        </h1>
+        <p style="font-size: 1.05rem; color: #666666; margin: 0; font-weight: 400;">
+            Plateforme synchronisée en temps réel avec Google Sheets — Accès par QR Code
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# Une ligne de séparation optionnelle pour bien délimiter l'en-tête et les métriques
+st.markdown("---")
 
 # --- BANDEAU DE MÉTRIQUES ---
 m1, m2, m3 = st.columns(3)
