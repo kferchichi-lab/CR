@@ -7,7 +7,7 @@ import gspread
 st.set_page_config(page_title="Plateforme de Contrôle Réglementaire", layout="wide")
 
 # URL de votre Google Sheet (REMPLACEZ PAR VOTRE LIEN DE PARTAGE)
-URL_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/VOTRE_ID_DE_SHEET_ICI/edit?usp=sharing"
+URL_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/1ZK6VWg_gcCO70nt6DTyYogDeNeQUgovFmwWQufMVO-M/edit?gid=1880221270#gid=1880221270"
 
 # --- CONNEXION À GOOGLE SHEETS ---
 @st.cache_data(ttl=10)  # Rafraîchit les données toutes les 10 secondes
