@@ -259,20 +259,27 @@ if not df_rapports.empty:
                 x='Nombre', 
                 y='Domaine', 
                 orientation='h',
+                text='Nombre', # 👈 AJOUT : Indique à Plotly d'utiliser la colonne 'Nombre' comme étiquette de texte
                 color_discrete_sequence=['#1E3A8A']
             )
+            
+            # Configuration de la position et de l'affichage du texte
+            fig_cat.update_traces(
+                textposition='outside', # 👈 AJOUT : Force le texte à s'afficher à l'extérieur (à droite) de la barre
+                cliponaxis=False         # 👈 AJOUT : Empêche que le texte soit coupé si la barre est trop longue
+            )
+            
             fig_cat.update_layout(
-                margin=dict(t=5, b=5, l=10, r=10),
+                margin=dict(t=5, b=5, l=10, r=40), # Augmentation de la marge de droite (r=40) pour laisser de la place aux chiffres
                 height=220,
                 xaxis_title=None,
                 yaxis_title=None,
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)'
             )
-            # La ligne problématique a été supprimée ici pour éviter le bug
+            
             fig_cat.update_xaxes(showgrid=True, gridcolor='#E2E8F0')
             st.plotly_chart(fig_cat, use_container_width=True, config={'displayModeBar': False})
-
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ==========================================
