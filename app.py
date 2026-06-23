@@ -109,9 +109,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Une ligne de séparation optionnelle pour bien délimiter l'en-tête et les métriques
-st.markdown("---")
-
 # --- BANDEAU DE MÉTRIQUES ---
 m1, m2, m3 = st.columns(3)
 with m1:
