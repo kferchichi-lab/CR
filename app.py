@@ -78,9 +78,6 @@ with st.sidebar:
         """,
         unsafe_allow_html=True
     )
-    
-    st.markdown("---") # Ligne de séparation élégante
-
     st.divider()
     st.markdown("### **Espace sécurisé**")
     role = st.selectbox("Profil utilisateur :", ["Visiteur", "Responsable"])
