@@ -13,41 +13,56 @@ st.set_page_config(
 # ==========================================
 # STYLE PREMIUM POUR LES FILTRES ET LES ONGLETS
 # ==========================================
+# ==========================================
+# STYLE PREMIUM CORRIGÉ POUR LES FILTRES ET LES ONGLETS
+# ==========================================
 st.html("""
 <style>
-    /* Style général des conteneurs de filtres */
+    /* 1. Style du grand conteneur des filtres */
     [data-testid="stVVerticalBlockBorderBordered"] {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
-        border-left: 5px solid #1E3A8A !important; /* Ligne bleue sur le côté comme vos KPI */
+        border-left: 5px solid #1E3A8A !important; /* Ligne signature bleue à gauche */
         border-radius: 12px !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02) !important;
         padding: 20px !important;
     }
 
-    /* Style des titres au-dessus des filtres */
+    /* 2. Titres des filtres (Site, Année, etc.) */
     .stSelectbox label p {
         color: #475569 !important;
         font-weight: 600 !important;
         font-size: 13px !important;
         letter-spacing: 0.5px;
+        margin-bottom: 6px !important;
     }
 
-    /* Style des boutons sélecteurs (Selectbox) */
-    div[data-testid="stSelectbox"] div[role="combobox"] {
-        background-color: #F8FAFC !important;
+    /* 3. LE BOUTON DU FILTRE (SELECTBOX) - Version ultra-compatible */
+    div[data-baseweb="select"] {
+        background-color: #F8FAFC !important; /* Fond gris très clair au repos */
         border: 1px solid #CBD5E1 !important;
         border-radius: 8px !important;
-        color: #0F172A !important;
-        font-weight: 500 !important;
-        transition: all 0.3s ease-in-out !important;
+        transition: all 0.25s ease-in-out !important;
     }
 
-    /* Effet de survol (Hover) premium sur les sélecteurs */
-    div[data-testid="stSelectbox"] div[role="combobox"]:hover {
-        border-color: #0EA5E9 !important; /* Changement vers le bleu ciel au survol */
-        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15) !important;
-        background-color: #FFFFFF !important;
+    /* Enlever les bordures intérieures par défaut de Streamlit */
+    div[data-baseweb="select"] > div {
+        border: none !important;
+        background-color: transparent !important;
+    }
+
+    /* 4. EFFET DE SURVOL (HOVER) PREMIUM SUR LES FILTRES */
+    div[data-baseweb="select"]:hover {
+        border-color: #0EA5E9 !important; /* Changement vers votre bleu ciel au survol */
+        background-color: #FFFFFF !important; /* Devient blanc brillant */
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12) !important; /* Halo lumineux discret */
+        cursor: pointer;
+    }
+
+    /* Style du texte à l'intérieur des filtres */
+    div[data-baseweb="select"] span {
+        color: #0F172A !important;
+        font-weight: 500 !important;
     }
 
     /* --- EFFET PREMIUM SUR LES ONGLETS (TABS) --- */
@@ -63,21 +78,19 @@ st.html("""
         transition: all 0.2s ease !important;
     }
 
-    /* Onglet survolé */
     div[data-testid="stTabs"] button:hover {
         color: #1E3A8A !important;
         background-color: #E2E8F0 !important;
     }
 
-    /* Onglet actif (Sélectionné) */
     div[data-testid="stTabs"] button[aria-selected="true"] {
         color: #FFFFFF !important;
-        background-color: #1E3A8A !important; /* Fond bleu nuit corporate */
+        background-color: #1E3A8A !important; /* Fond bleu nuit */
         border-color: #1E3A8A !important;
-        box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2) !important;
+        box-shadow: 0 4px 10px rgba(30, 58, 138, 0.15) !important;
     }
 
-    /* Enlever la ligne rouge d'origine sous l'onglet actif de Streamlit */
+    /* Masquer la barre rouge par défaut sous l'onglet actif */
     div[data-testid="stTabs"] [data-baseweb="tab-highlight-bar"] {
         background-color: transparent !important;
     }
