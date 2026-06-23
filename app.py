@@ -269,7 +269,7 @@ if not df_rapports.empty:
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)'
             )
-            fig_cat.update_traces(marker_corner_radius=4) # Bords de barres légèrement arrondis
+            # La ligne problématique a été supprimée ici pour éviter le bug
             fig_cat.update_xaxes(showgrid=True, gridcolor='#E2E8F0')
             st.plotly_chart(fig_cat, use_container_width=True, config={'displayModeBar': False})
 
