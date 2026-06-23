@@ -198,89 +198,6 @@ def convertir_en_lien_direct(url):
         pass
     return url
 
-# ==========================================
-# 7. GRAPHIQUES ANALYTIQUES (RÉPARTITION)
-# ==========================================
-st.markdown("<br>", unsafe_allow_html=True)
-
-# On vérifie que la base de rapports n'est pas vide pour éviter les erreurs
-if not df_rapports.empty:
-    
-    # Identification automatique des colonnes Site et Catégorie
-    col_site_chart = [c for c in df_rapports.columns if "site" in c.lower()]
-    col_cat_chart = [c for c in df_rapports.columns if "cat" in c.lower()]
-    
-    if col_site_chart and col_cat_chart:
-        # Préparation des données pour les graphiques
-        df_site_count = df_rapports[col_site_chart[0]].value_counts().reset_index()
-        df_site_count.columns = ['Site', 'Nombre']
-        
-        df_cat_count = df_rapports[col_cat_chart[0]].value_counts().reset_index()
-        df_cat_count.columns = ['Domaine', 'Nombre']
-
-        # Création de 2 colonnes pour afficher les graphiques côte à côte
-        chart_col1, chart_col2 = st.columns(2)
-        
-        # --- GRAPH 1 : RÉPARTITION PAR SITE (Style Donut épuré) ---
-        with chart_col1:
-            st.markdown("""
-                <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; margin-bottom: 15px;">
-                    <p style="margin:0; font-size: 14px; color: #1E3A8A; font-weight: 600;">📊 Volume de rapports par Site</p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            fig_site = px.pie(
-                df_site_count, 
-                values='Nombre', 
-                names='Site', 
-                hole=0.6, # Effet anneau/donut moderne
-                color_discrete_sequence=['#1E3A8A', '#0EA5E9', '#94A3B8'] # Palette corporate
-            )
-            fig_site.update_traces(textposition='inside', textinfo='percent+label')
-            fig_site.update_layout(
-                margin=dict(t=10, b=10, l=10, r=10),
-                height=220,
-                showlegend=False,
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
-            st.plotly_chart(fig_site, use_container_width=True, config={'displayModeBar': False})
-
-        # --- GRAPH 2 : RÉPARTITION PAR CATÉGORIE (Barres Horizontales) ---
-        with chart_col2:
-            st.markdown("""
-                <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; margin-bottom: 15px;">
-                    <p style="margin:0; font-size: 14px; color: #1E3A8A; font-weight: 600;">📈 Rapports par Domaine Technique</p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            fig_cat = px.bar(
-                df_cat_count.sort_values(by='Nombre', ascending=True), 
-                x='Nombre', 
-                y='Domaine', 
-                orientation='h',
-                text='Nombre', # 👈 AJOUT : Indique à Plotly d'utiliser la colonne 'Nombre' comme étiquette de texte
-                color_discrete_sequence=['#1E3A8A']
-            )
-            
-            # Configuration de la position et de l'affichage du texte
-            fig_cat.update_traces(
-                textposition='outside', # 👈 AJOUT : Force le texte à s'afficher à l'extérieur (à droite) de la barre
-                cliponaxis=False         # 👈 AJOUT : Empêche que le texte soit coupé si la barre est trop longue
-            )
-            
-            fig_cat.update_layout(
-                margin=dict(t=5, b=5, l=10, r=40), # Augmentation de la marge de droite (r=40) pour laisser de la place aux chiffres
-                height=220,
-                xaxis_title=None,
-                yaxis_title=None,
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
-            
-            fig_cat.update_xaxes(showgrid=True, gridcolor='#E2E8F0')
-            st.plotly_chart(fig_cat, use_container_width=True, config={'displayModeBar': False})
-st.markdown("<br>", unsafe_allow_html=True)
 
 # ==========================================
 # PARTIE 1 : INTERFACE DES RAPPORTS
@@ -299,6 +216,75 @@ with tab1:
         with c4:
             opts = ["Tous"] + SOUS_EQUIPEMENTS[f_cat] if f_cat != "Tous" else ["Tous"] + [i for sub in SOUS_EQUIPEMENTS.values() for i in sub]
             f_sous_eq = st.selectbox("Sous-équipement", opts)
+    # 📊 DEBUT DE LA SECTION GRAPHIQUES (PLURALS ET INDEXES SUR LES RAPPORTS ARCHIVÉS)
+    st.markdown("<br>", unsafe_allow_html=True)
+    if not df_rapports.empty:
+        col_site_chart = [c for c in df_rapports.columns if "site" in c.lower()]
+        col_cat_chart = [c for c in df_rapports.columns if "cat" in c.lower()]
+        
+        if col_site_chart and col_cat_chart:
+            df_site_count = df_rapports[col_site_chart[0]].value_counts().reset_index()
+            df_site_count.columns = ['Site', 'Nombre']
+            
+            df_cat_count = df_rapports[col_cat_chart[0]].value_counts().reset_index()
+            df_cat_count.columns = ['Domaine', 'Nombre']
+
+            # Création de 2 colonnes pour les graphiques
+            chart_col1, chart_col2 = st.columns(2)
+            
+            # GRAPH 1 : Répartition par Site (Donut)
+            with chart_col1:
+                st.markdown("""
+                    <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; margin-bottom: 15px;">
+                        <p style="margin:0; font-size: 14px; color: #1E3A8A; font-weight: 600;">📊 Volume de rapports par Site</p>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                fig_site = px.pie(
+                    df_site_count, 
+                    values='Nombre', 
+                    names='Site', 
+                    hole=0.6,
+                    color_discrete_sequence=['#1E3A8A', '#0EA5E9', '#94A3B8']
+                )
+                fig_site.update_traces(textposition='inside', textinfo='percent+label')
+                fig_site.update_layout(
+                    margin=dict(t=10, b=10, l=10, r=10),
+                    height=220,
+                    showlegend=False,
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)'
+                )
+                st.plotly_chart(fig_site, use_container_width=True, config={'displayModeBar': False})
+
+            # GRAPH 2 : Répartition par Domaine (Barres avec nombres à droite)
+            with chart_col2:
+                st.markdown("""
+                    <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; margin-bottom: 15px;">
+                        <p style="margin:0; font-size: 14px; color: #1E3A8A; font-weight: 600;">📈 Rapports par Domaine Technique</p>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                fig_cat = px.bar(
+                    df_cat_count.sort_values(by='Nombre', ascending=True), 
+                    x='Nombre', 
+                    y='Domaine', 
+                    orientation='h',
+                    text='Nombre',
+                    color_discrete_sequence=['#1E3A8A']
+                )
+                fig_cat.update_traces(textposition='outside', cliponaxis=False)
+                fig_cat.update_layout(
+                    margin=dict(t=5, b=5, l=10, r=40),
+                    height=220,
+                    xaxis_title=None,
+                    yaxis_title=None,
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)'
+                )
+                fig_cat.update_xaxes(showgrid=True, gridcolor='#E2E8F0')
+                st.plotly_chart(fig_cat, use_container_width=True, config={'displayModeBar': False})
+    # 📊 FIN DE LA SECTION GRAPHIQUES
 
     st.markdown("<br><p style='font-size: 1.2rem; font-weight: 700; color: #0F172A; margin-bottom:10px;'>📂 Documents rattachés</p>", unsafe_allow_html=True)
     
