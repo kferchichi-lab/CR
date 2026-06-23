@@ -108,7 +108,7 @@ def convertir_en_lien_direct(url):
 # PARTIE 1 : INTERFACE DES RAPPORTS
 # ==========================================
 with tab1:
-    st.markdown("### 🎛️ Filtres de Recherche Avancés")
+    st.markdown("### 🎛️ Filtres de recherche")
     
     with st.container(border=True):
         c1, c2, c3, c4 = st.columns(4)
@@ -134,7 +134,7 @@ with tab1:
         if f_sous_eq != "Tous" and "Sous-équipement" in df_f.columns: 
             df_f = df_f[df_f["Sous-équipement"].astype(str) == f_sous_eq]
 
-    st.markdown("### 📋 Documents Rattachés")
+    st.markdown("### 📋 Documents rattachés")
     
     if not df_f.empty:
         # 2. TRANSFORMATION DES LIENS EN LIENS DE TÉLÉCHARGEMENT DIRECT
