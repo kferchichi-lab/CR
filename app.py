@@ -54,7 +54,7 @@ SOUS_EQUIPEMENTS = {
     "Equipements de levage": ["Pont Roulant", "Chariot Élévateur", "Palan Électrique"],
     "Sécurité incendie": [],
     "Installations de gaz": ["Industrielle", "Chaudière"],
-    "Appareil pression de gaz": ["Réservoir d'air comprimé"]
+    "Appareil pression de gaz": []
 }
 
 # --- SIDEBAR ---
