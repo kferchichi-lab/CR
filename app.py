@@ -91,9 +91,19 @@ with m3:
 st.markdown("---")
 tab1, tab2 = st.tabs(["🔍 Registre & Rapports de Contrôle", "📅 Suivi de Performance & Planning"])
 
-# ==========================================
-# PARTIE 1 : INTERFACE DES RAPPORTS
-# ==========================================
+# --- FONCTION DE TRANSFORMATION POUR TÉLÉCHARGEMENT DIRECT ---
+def convertir_en_lien_direct(url):
+    """Transforme un lien de visualisation Google Drive en lien de téléchargement direct"""
+    try:
+        if "drive.google.com" in str(url) and "/file/d/" in str(url):
+            # Extraction de l'ID unique du fichier PDF
+            id_fichier = str(url).split("/file/d/")[1].split("/")[0]
+            # Création du lien de téléchargement forcé
+            return f"https://drive.google.com/uc?export=download&id={id_fichier}"
+    except Exception:
+        pass
+    return url # Retourne le lien normal si ce n'est pas du Google Drive
+
 # ==========================================
 # PARTIE 1 : INTERFACE DES RAPPORTS
 # ==========================================
@@ -112,7 +122,7 @@ with tab1:
             opts = ["Tous"] + SOUS_EQUIPEMENTS[f_cat] if f_cat != "Tous" else ["Tous"] + [i for sub in SOUS_EQUIPEMENTS.values() for i in sub]
             f_sous_eq = st.selectbox("Sous-Équipement cible", opts)
 
-    # Filtrage des données (Adapté à vos colonnes exactes)
+    # 1. Filtrage des données
     df_f = df_rapports.copy()
     if not df_f.empty:
         if f_site != "Tous" and "Site" in df_f.columns: 
@@ -127,14 +137,18 @@ with tab1:
     st.markdown("### 📋 Documents Rattachés")
     
     if not df_f.empty:
-        # Affichage avec configuration de l'icône de téléchargement
+        # 2. APPLICATION DE LA TRANSFORMATION DES LIENS AVANT AFFICHAGE
+        if "Lien PDF" in df_f.columns:
+            df_f["Lien PDF"] = df_f["Lien PDF"].apply(convertir_en_lien_direct)
+
+        # 3. Affichage du tableau professionnel
         st.dataframe(
             df_f,
             column_config={
                 "Lien PDF": st.column_config.LinkColumn(
                     "Action", 
                     display_text="📥 Télécharger",
-                    help="Cliquez pour ouvrir ou imprimer le rapport PDF"
+                    help="Cliquez pour télécharger directement le rapport PDF sur votre machine"
                 ),
                 "Exercice": st.column_config.NumberColumn("Exercice", format="%d"),
                 "Date de dernier contrôle": st.column_config.DateColumn("Date de dernier contrôle")
@@ -148,7 +162,6 @@ with tab1:
     if role == "🔑 Responsable (Admin)" and password_correct:
         with st.expander("🛠️ Panneau d'administration"):
             st.markdown(f"[🔗 Ouvrir le Google Sheets pour ajouter/modifier des rapports]({URL_GOOGLE_SHEET})")
-
 # ==========================================
 # PARTIE 2 : MAÎTRISE & PLANNING
 # ==========================================
