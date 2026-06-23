@@ -59,9 +59,9 @@ SOUS_EQUIPEMENTS = {
 
 # --- SIDEBAR ---
 with st.sidebar:
-        st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s", width=150)
-        st.markdown("## Tunisie Profilés d'Aluminium")
-        st.markdown("#### Direction Maintenance et Travaux Neufs")
+    st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s", width=150)
+    st.markdown("## Tunisie Profilés d'Aluminium")
+    st.markdown("#### Direction Maintenance et Travaux Neufs")
     st.divider()
     st.markdown("### **Espace sécurisé**")
     role = st.selectbox("Profil Utilisateur :", ["👤 Visiteur (Lecture seule)", "🔑 Responsable (Admin)"])
