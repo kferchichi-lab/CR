@@ -59,9 +59,28 @@ SOUS_EQUIPEMENTS = {
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s", width=150)
-    st.markdown("## Tunisie Profilés d'Aluminium")
-    st.markdown("#### Direction Maintenance et Travaux Neufs")
+    col1, col2, col3 = st.columns([1, 3, 1]) 
+    with col2:
+        # Remplacez "logo.png" par le nom exact de votre fichier image dans votre projet
+        st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s", width=150)
+    
+    # 2. 🎯 CENTRAGE DES TITRES (En HTML pour un contrôle parfait)
+    st.markdown(
+        """
+        <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
+            <h3 style="font-size: 1.2rem; font-weight: bold; margin-bottom: 5px; line-height: 1.2; color: #31333F;">
+                Tunisie Profilés d'Aluminium
+            </h3>
+            <p style="font-size: 0.9rem; color: #666666; margin: 0; font-weight: 500;">
+                Direction Maintenance et Travaux Neufs
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    st.markdown("---") # Ligne de séparation élégante
+
     st.divider()
     st.markdown("### **Espace sécurisé**")
     role = st.selectbox("Profil utilisateur :", ["Visiteur", "Responsable"])
