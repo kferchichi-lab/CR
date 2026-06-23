@@ -1,6 +1,6 @@
 import streamlit as st
-import pandas as pd
 import plotly.express as px
+import pandas as pd
 from datetime import datetime
 
 # 1. CONFIGURATION DE LA PAGE DE DIRECTION
