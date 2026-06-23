@@ -64,10 +64,10 @@ with st.sidebar:
     st.markdown("#### Direction Maintenance et Travaux Neufs")
     st.divider()
     st.markdown("### **Espace sécurisé**")
-    role = st.selectbox("Profil Utilisateur :", ["👤 Visiteur (Lecture seule)", "🔑 Responsable (Admin)"])
+    role = st.selectbox("Profil utilisateur :", ["Visiteur", "Responsable"])
     
     password_correct = False
-    if role == "🔑 Responsable (Admin)":
+    if role == "Responsable":
         password = st.text_input("Code d'accès :", type="password")
         if password == "admin123*":
             password_correct = True
@@ -76,7 +76,7 @@ with st.sidebar:
             st.error("Code incorrect")
 
 # --- EN-TÊTE ---
-st.title("🛡️ Contrôle réglementaire")
+st.title("Contrôle réglementaire")
 st.caption("Plateforme synchronisée en temps réel avec Google Sheets — Accès par QR Code")
 
 # --- BANDEAU DE MÉTRIQUES ---
@@ -93,7 +93,7 @@ with m3:
     st.metric(label="Alertes non-conformité", value=non_conf, delta=-non_conf if non_conf > 0 else 0, delta_color="inverse")
 
 st.markdown("---")
-tab1, tab2 = st.tabs(["🔍 Rapports de contrôle", "📅 Suivi de performance & planning"])
+tab1, tab2 = st.tabs(["Rapports de contrôle", "Suivi de performance & planning"])
 
 # --- FONCTION DE TRANSFORMATION POUR TÉLÉCHARGEMENT DIRECT ---
 def convertir_en_lien_direct(url):
@@ -112,7 +112,7 @@ def convertir_en_lien_direct(url):
 # PARTIE 1 : INTERFACE DES RAPPORTS
 # ==========================================
 with tab1:
-    st.markdown("### 🎛️ Filtres de recherche")
+    st.markdown("### Filtres de recherche")
     
     with st.container(border=True):
         c1, c2, c3, c4 = st.columns(4)
@@ -145,7 +145,7 @@ with tab1:
         if f_sous_eq != "Tous" and "Sous-équipement" in df_f.columns: 
             df_f = df_f[df_f["Sous-équipement"].astype(str).str.strip() == f_sous_eq]
 
-    st.markdown("### 📋 Documents rattachés")
+    st.markdown("### Documents rattachés")
     
     if not df_f.empty:
         # 2. TRANSFORMATION DES LIENS EN LIENS DE TÉLÉCHARGEMENT DIRECT
@@ -181,14 +181,14 @@ with tab1:
     else:
         st.warning("Aucun rapport ne correspond à vos filtres actuels ou la base de données est vide.")
 
-    if role == "🔑 Responsable (Admin)" and password_correct:
-        with st.expander("🛠️ Panneau d'administration"):
-            st.markdown(f"[🔗 Ouvrir le Google Sheets pour ajouter/modifier des rapports]({URL_GOOGLE_SHEET})")
+    if role == "Responsable" and password_correct:
+        with st.expander("Panneau d'administration"):
+            st.markdown(f"[Ouvrir le Google Sheets pour ajouter/modifier des rapports]({URL_GOOGLE_SHEET})")
 # ==========================================
 # PARTIE 2 : MAÎTRISE & PLANNING
 # ==========================================
 with tab2:
-    st.markdown("### 📆 Calendrier de maintenance réglementaire")
+    st.markdown("### Calendrier de maintenance réglementaire")
     
     if not df_planning.empty:
         st.dataframe(
@@ -202,6 +202,6 @@ with tab2:
     else:
         st.info("Le tableau de planification est vide sur Google Sheets.")
     
-    if role == "🔑 Responsable (Admin)" and password_correct:
-        with st.expander("🛠️ Panneau d'administration"):
-            st.markdown(f"[🔗 Ouvrir le Google Sheets pour modifier le planning]({URL_GOOGLE_SHEET})")
+    if role == "Responsable" and password_correct:
+        with st.expander("Panneau d'administration"):
+            st.markdown(f"[Ouvrir le Google Sheets pour modifier le planning]({URL_GOOGLE_SHEET})")
