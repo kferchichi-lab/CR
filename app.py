@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from datetime import datetime
 
 # 1. CONFIGURATION DE LA PAGE DE DIRECTION
@@ -196,6 +197,83 @@ def convertir_en_lien_direct(url):
     except Exception:
         pass
     return url
+
+# ==========================================
+# 7. GRAPHIQUES ANALYTIQUES (RÉPARTITION)
+# ==========================================
+st.markdown("<br>", unsafe_allow_html=True)
+
+# On vérifie que la base de rapports n'est pas vide pour éviter les erreurs
+if not df_rapports.empty:
+    
+    # Identification automatique des colonnes Site et Catégorie
+    col_site_chart = [c for c in df_rapports.columns if "site" in c.lower()]
+    col_cat_chart = [c for c in df_rapports.columns if "cat" in c.lower()]
+    
+    if col_site_chart and col_cat_chart:
+        # Préparation des données pour les graphiques
+        df_site_count = df_rapports[col_site_chart[0]].value_counts().reset_index()
+        df_site_count.columns = ['Site', 'Nombre']
+        
+        df_cat_count = df_rapports[col_cat_chart[0]].value_counts().reset_index()
+        df_cat_count.columns = ['Domaine', 'Nombre']
+
+        # Création de 2 colonnes pour afficher les graphiques côte à côte
+        chart_col1, chart_col2 = st.columns(2)
+        
+        # --- GRAPH 1 : RÉPARTITION PAR SITE (Style Donut épuré) ---
+        with chart_col1:
+            st.markdown("""
+                <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; margin-bottom: 15px;">
+                    <p style="margin:0; font-size: 14px; color: #1E3A8A; font-weight: 600;">📊 Volume de rapports par Site</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            fig_site = px.pie(
+                df_site_count, 
+                values='Nombre', 
+                names='Site', 
+                hole=0.6, # Effet anneau/donut moderne
+                color_discrete_sequence=['#1E3A8A', '#0EA5E9', '#94A3B8'] # Palette corporate
+            )
+            fig_site.update_traces(textposition='inside', textinfo='percent+label')
+            fig_site.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10),
+                height=220,
+                showlegend=False,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)'
+            )
+            st.plotly_chart(fig_site, use_container_width=True, config={'displayModeBar': False})
+
+        # --- GRAPH 2 : RÉPARTITION PAR CATÉGORIE (Barres Horizontales) ---
+        with chart_col2:
+            st.markdown("""
+                <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; margin-bottom: 15px;">
+                    <p style="margin:0; font-size: 14px; color: #1E3A8A; font-weight: 600;">📈 Rapports par Domaine Technique</p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            fig_cat = px.bar(
+                df_cat_count.sort_values(by='Nombre', ascending=True), 
+                x='Nombre', 
+                y='Domaine', 
+                orientation='h',
+                color_discrete_sequence=['#1E3A8A']
+            )
+            fig_cat.update_layout(
+                margin=dict(t=5, b=5, l=10, r=10),
+                height=220,
+                xaxis_title=None,
+                yaxis_title=None,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)'
+            )
+            fig_cat.update_traces(marker_corner_radius=4) # Bords de barres légèrement arrondis
+            fig_cat.update_xaxes(showgrid=True, gridcolor='#E2E8F0')
+            st.plotly_chart(fig_cat, use_container_width=True, config={'displayModeBar': False})
+
+st.markdown("<br>", unsafe_allow_html=True)
 
 # ==========================================
 # PARTIE 1 : INTERFACE DES RAPPORTS
