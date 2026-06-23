@@ -216,7 +216,64 @@ with tab1:
         with c4:
             opts = ["Tous"] + SOUS_EQUIPEMENTS[f_cat] if f_cat != "Tous" else ["Tous"] + [i for sub in SOUS_EQUIPEMENTS.values() for i in sub]
             f_sous_eq = st.selectbox("Sous-équipement", opts)
-    # 📊 DEBUT DE LA SECTION GRAPHIQUES (PLURALS ET INDEXES SUR LES RAPPORTS ARCHIVÉS)
+   
+    st.markdown("<br><p style='font-size: 1.2rem; font-weight: 700; color: #0F172A; margin-bottom:10px;'>📂 Documents rattachés</p>", unsafe_allow_html=True)
+    
+    # Filtrage intelligent
+    df_f = df_rapports.copy()
+    if not df_f.empty:
+        # Identification dynamique des colonnes de l'utilisateur (Robustesse)
+        col_site = [c for c in df_f.columns if "site" in c.lower()]
+        col_ex = [c for c in df_f.columns if "exerc" in c.lower() or "ann" in c.lower()]
+        col_cat = [c for c in df_f.columns if "cat" in c.lower()]
+        col_seq = [c for c in df_f.columns if "sous" in c.lower()]
+        col_lien = [c for c in df_f.columns if "lien" in c.lower() or "pdf" in c.lower()]
+        col_date = [c for c in df_f.columns if "date" in c.lower() or "contr" in c.lower()]
+
+        if f_site != "Tous" and col_site:
+            df_f = df_f[df_f[col_site[0]].astype(str).str.strip() == f_site]
+            
+        if f_annee != "Tous" and col_ex:
+            df_f = df_f[pd.to_numeric(df_f[col_ex[0]], errors='coerce') == int(f_annee)]
+            
+        if f_cat != "Tous" and col_cat:
+            df_f = df_f[df_f[col_cat[0]].astype(str).str.strip() == f_cat]
+            
+        if f_sous_eq != "Tous" and col_seq:
+            df_f = df_f[df_f[col_seq[0]].astype(str).str.strip() == f_sous_eq]
+
+    if not df_f.empty:
+        # Nettoyage des formats pour l'affichage directionnel
+        if col_lien:
+            df_f[col_lien[0]] = df_f[col_lien[0]].apply(convertir_en_lien_direct)
+
+        if col_date:
+            df_f[col_date[0]] = pd.to_datetime(df_f[col_date[0]], dayfirst=True, errors='coerce')
+
+        nom_col_ex = col_ex[0] if col_ex else "Exercice"
+        nom_col_date = col_date[0] if col_date else "Date de dernier contrôle"
+        nom_col_lien = col_lien[0] if col_lien else "Lien PDF"
+
+        # Affichage du tableau de données haute fidélité
+        st.dataframe(
+            df_f,
+            column_config={
+                nom_col_lien: st.column_config.LinkColumn(
+                    "Action", 
+                    display_text="📥 Télécharger PDF",
+                    help="Télécharger directement le rapport officiel validé"
+                ),
+                nom_col_ex: st.column_config.NumberColumn("Exercice", format="%d"),
+                nom_col_date: st.column_config.DateColumn("Date de dernier contrôle", format="DD/MM/YYYY")
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+    else:
+        st.warning("Aucun rapport ne correspond aux critères sélectionnés.")
+
+
+     # 📊 DEBUT DE LA SECTION GRAPHIQUES (PLURALS ET INDEXES SUR LES RAPPORTS ARCHIVÉS)
     st.markdown("<br>", unsafe_allow_html=True)
     if not df_rapports.empty:
         col_site_chart = [c for c in df_rapports.columns if "site" in c.lower()]
@@ -286,60 +343,6 @@ with tab1:
                 st.plotly_chart(fig_cat, use_container_width=True, config={'displayModeBar': False})
     # 📊 FIN DE LA SECTION GRAPHIQUES
 
-    st.markdown("<br><p style='font-size: 1.2rem; font-weight: 700; color: #0F172A; margin-bottom:10px;'>📂 Documents rattachés</p>", unsafe_allow_html=True)
-    
-    # Filtrage intelligent
-    df_f = df_rapports.copy()
-    if not df_f.empty:
-        # Identification dynamique des colonnes de l'utilisateur (Robustesse)
-        col_site = [c for c in df_f.columns if "site" in c.lower()]
-        col_ex = [c for c in df_f.columns if "exerc" in c.lower() or "ann" in c.lower()]
-        col_cat = [c for c in df_f.columns if "cat" in c.lower()]
-        col_seq = [c for c in df_f.columns if "sous" in c.lower()]
-        col_lien = [c for c in df_f.columns if "lien" in c.lower() or "pdf" in c.lower()]
-        col_date = [c for c in df_f.columns if "date" in c.lower() or "contr" in c.lower()]
-
-        if f_site != "Tous" and col_site:
-            df_f = df_f[df_f[col_site[0]].astype(str).str.strip() == f_site]
-            
-        if f_annee != "Tous" and col_ex:
-            df_f = df_f[pd.to_numeric(df_f[col_ex[0]], errors='coerce') == int(f_annee)]
-            
-        if f_cat != "Tous" and col_cat:
-            df_f = df_f[df_f[col_cat[0]].astype(str).str.strip() == f_cat]
-            
-        if f_sous_eq != "Tous" and col_seq:
-            df_f = df_f[df_f[col_seq[0]].astype(str).str.strip() == f_sous_eq]
-
-    if not df_f.empty:
-        # Nettoyage des formats pour l'affichage directionnel
-        if col_lien:
-            df_f[col_lien[0]] = df_f[col_lien[0]].apply(convertir_en_lien_direct)
-
-        if col_date:
-            df_f[col_date[0]] = pd.to_datetime(df_f[col_date[0]], dayfirst=True, errors='coerce')
-
-        nom_col_ex = col_ex[0] if col_ex else "Exercice"
-        nom_col_date = col_date[0] if col_date else "Date de dernier contrôle"
-        nom_col_lien = col_lien[0] if col_lien else "Lien PDF"
-
-        # Affichage du tableau de données haute fidélité
-        st.dataframe(
-            df_f,
-            column_config={
-                nom_col_lien: st.column_config.LinkColumn(
-                    "Action", 
-                    display_text="📥 Télécharger PDF",
-                    help="Télécharger directement le rapport officiel validé"
-                ),
-                nom_col_ex: st.column_config.NumberColumn("Exercice", format="%d"),
-                nom_col_date: st.column_config.DateColumn("Date de dernier contrôle", format="DD/MM/YYYY")
-            },
-            hide_index=True,
-            use_container_width=True
-        )
-    else:
-        st.warning("Aucun rapport ne correspond aux critères sélectionnés.")
 
     # Panneau d'administration épuré
     if role == "Responsable" and password_correct:
