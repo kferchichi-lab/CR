@@ -51,7 +51,7 @@ st.markdown("""
 
 SOUS_EQUIPEMENTS = {
     "Installations électriques": [],
-    "Equipements de levage": ["Pont Roulant", "Chariot Élévateur", "Palan Électrique"],
+    "Equipements de levage": ["Transpalette", "Table élévatrice", "Potence", "Pont roulant", "Plateforme de travail", "Nacelle", "Gerbeur", "Chariot élévateur", "Palan électrique", "Ascenseur"],
     "Sécurité incendie": [],
     "Installations de gaz": ["Industrielle", "Chaudière"],
     "Appareil pression de gaz": []
