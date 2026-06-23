@@ -10,7 +10,79 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+# ==========================================
+# STYLE PREMIUM POUR LES FILTRES ET LES ONGLETS
+# ==========================================
+st.html("""
+<style>
+    /* Style général des conteneurs de filtres */
+    [data-testid="stVVerticalBlockBorderBordered"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-left: 5px solid #1E3A8A !important; /* Ligne bleue sur le côté comme vos KPI */
+        border-radius: 12px !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03) !important;
+        padding: 20px !important;
+    }
 
+    /* Style des titres au-dessus des filtres */
+    .stSelectbox label p {
+        color: #475569 !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
+        letter-spacing: 0.5px;
+    }
+
+    /* Style des boutons sélecteurs (Selectbox) */
+    div[data-testid="stSelectbox"] div[role="combobox"] {
+        background-color: #F8FAFC !important;
+        border: 1px solid #CBD5E1 !important;
+        border-radius: 8px !important;
+        color: #0F172A !important;
+        font-weight: 500 !important;
+        transition: all 0.3s ease-in-out !important;
+    }
+
+    /* Effet de survol (Hover) premium sur les sélecteurs */
+    div[data-testid="stSelectbox"] div[role="combobox"]:hover {
+        border-color: #0EA5E9 !important; /* Changement vers le bleu ciel au survol */
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15) !important;
+        background-color: #FFFFFF !important;
+    }
+
+    /* --- EFFET PREMIUM SUR LES ONGLETS (TABS) --- */
+    div[data-testid="stTabs"] button {
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: #64748B !important;
+        background-color: #F1F5F9 !important;
+        padding: 10px 20px !important;
+        margin-right: 8px !important;
+        border-radius: 8px 8px 0px 0px !important;
+        border: 1px solid transparent !important;
+        transition: all 0.2s ease !important;
+    }
+
+    /* Onglet survolé */
+    div[data-testid="stTabs"] button:hover {
+        color: #1E3A8A !important;
+        background-color: #E2E8F0 !important;
+    }
+
+    /* Onglet actif (Sélectionné) */
+    div[data-testid="stTabs"] button[aria-selected="true"] {
+        color: #FFFFFF !important;
+        background-color: #1E3A8A !important; /* Fond bleu nuit corporate */
+        border-color: #1E3A8A !important;
+        box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2) !important;
+    }
+
+    /* Enlever la ligne rouge d'origine sous l'onglet actif de Streamlit */
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight-bar"] {
+        background-color: transparent !important;
+    }
+</style>
+""")
 # ==========================================
 # ⚠️ LIEN DE SYNCHRONISATION GOOGLE SHEETS
 # ==========================================
