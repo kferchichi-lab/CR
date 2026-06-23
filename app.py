@@ -113,14 +113,14 @@ with tab1:
     with st.container(border=True):
         c1, c2, c3, c4 = st.columns(4)
         with c1:
-            f_site = st.selectbox("Site Établissement", ["Tous", "SGB", "MEG"])
+            f_site = st.selectbox("Site", ["Tous", "SGB", "MEG"])
         with c2:
-            f_annee = st.selectbox("Année de l'exercice", ["Tous", "2025", "2026"])
+            f_annee = st.selectbox("Année", ["Tous", "2025", "2026"])
         with c3:
-            f_cat = st.selectbox("Domaine Technique", ["Tous"] + list(SOUS_EQUIPEMENTS.keys()))
+            f_cat = st.selectbox("Domaine technique", ["Tous"] + list(SOUS_EQUIPEMENTS.keys()))
         with c4:
             opts = ["Tous"] + SOUS_EQUIPEMENTS[f_cat] if f_cat != "Tous" else ["Tous"] + [i for sub in SOUS_EQUIPEMENTS.values() for i in sub]
-            f_sous_eq = st.selectbox("Sous-Équipement cible", opts)
+            f_sous_eq = st.selectbox("Sous-équipement", opts)
 
     # 1. Filtrage des données
     df_f = df_rapports.copy()
