@@ -16,6 +16,9 @@ st.set_page_config(
 # ==========================================
 # STYLE PREMIUM CORRIGÉ POUR LES FILTRES ET LES ONGLETS
 # ==========================================
+# ==========================================
+# STYLE PREMIUM OPTIMISÉ (ONGLÈTS CLAIRS & LISIBLES)
+# ==========================================
 st.html("""
 <style>
     /* 1. Style du grand conteneur des filtres */
@@ -37,60 +40,62 @@ st.html("""
         margin-bottom: 6px !important;
     }
 
-    /* 3. LE BOUTON DU FILTRE (SELECTBOX) - Version ultra-compatible */
+    /* 3. LE BOUTON DU FILTRE (SELECTBOX) */
     div[data-baseweb="select"] {
-        background-color: #F8FAFC !important; /* Fond gris très clair au repos */
+        background-color: #F8FAFC !important;
         border: 1px solid #CBD5E1 !important;
         border-radius: 8px !important;
         transition: all 0.25s ease-in-out !important;
     }
 
-    /* Enlever les bordures intérieures par défaut de Streamlit */
     div[data-baseweb="select"] > div {
         border: none !important;
         background-color: transparent !important;
     }
 
-    /* 4. EFFET DE SURVOL (HOVER) PREMIUM SUR LES FILTRES */
+    /* Effet survol sur les filtres */
     div[data-baseweb="select"]:hover {
-        border-color: #0EA5E9 !important; /* Changement vers votre bleu ciel au survol */
-        background-color: #FFFFFF !important; /* Devient blanc brillant */
-        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12) !important; /* Halo lumineux discret */
+        border-color: #0EA5E9 !important;
+        background-color: #FFFFFF !important;
+        box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12) !important;
         cursor: pointer;
     }
 
-    /* Style du texte à l'intérieur des filtres */
     div[data-baseweb="select"] span {
         color: #0F172A !important;
         font-weight: 500 !important;
     }
 
-    /* --- EFFET PREMIUM SUR LES ONGLETS (TABS) --- */
+    /* --- 4. STYLE AMÉLIORÉ ET TRÈS LISIBLE POUR LES ONGLETS (TABS) --- */
     div[data-testid="stTabs"] button {
         font-size: 14px !important;
         font-weight: 600 !important;
-        color: #64748B !important;
-        background-color: #F1F5F9 !important;
-        padding: 10px 20px !important;
+        color: #64748B !important;             /* Texte gris discret pour l'onglet inactif */
+        background-color: #F8FAFC !important;  /* Fond très clair pour l'onglet inactif */
+        padding: 10px 24px !important;
         margin-right: 8px !important;
         border-radius: 8px 8px 0px 0px !important;
-        border: 1px solid transparent !important;
+        border: 1px solid #E2E8F0 !important;
+        border-bottom: none !important;
         transition: all 0.2s ease !important;
     }
 
+    /* Onglet survolé avec la souris */
     div[data-testid="stTabs"] button:hover {
-        color: #1E3A8A !important;
-        background-color: #E2E8F0 !important;
+        color: #1E3A8A !important;             /* Le texte s'illumine en bleu nuit corporate */
+        background-color: #F1F5F9 !important;
     }
 
+    /* 🎯 ONGLET ACTIF (SÉLECTIONNÉ) : Style Premium Lumineux */
     div[data-testid="stTabs"] button[aria-selected="true"] {
-        color: #FFFFFF !important;
-        background-color: #1E3A8A !important; /* Fond bleu nuit */
-        border-color: #1E3A8A !important;
-        box-shadow: 0 4px 10px rgba(30, 58, 138, 0.15) !important;
+        color: #1E3A8A !important;             /* Texte Bleu Nuit très foncé et parfaitement lisible */
+        background-color: #E0F2FE !important;  /* Fond Bleu Ciel très doux/pastel (Excellent contraste) */
+        border-color: #bae6fd !important;
+        border-bottom: none !important;
+        box-shadow: inset 0 3px 0px #0EA5E9 !important; /* Petite ligne supérieure bleu vif style moderne */
     }
 
-    /* Masquer la barre rouge par défaut sous l'onglet actif */
+    /* Supprimer définitivement la barre rouge par défaut de Streamlit */
     div[data-testid="stTabs"] [data-baseweb="tab-highlight-bar"] {
         background-color: transparent !important;
     }
