@@ -4,7 +4,7 @@ from datetime import datetime
 
 # 1. CONFIGURATION DE LA PAGE
 st.set_page_config(
-    page_title="HSE Compliance Platform",
+    page_title="Contrôle réglementaire",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -72,7 +72,7 @@ with st.sidebar:
             st.error("Code incorrect")
 
 # --- EN-TÊTE ---
-st.title("🛡️ Portail Réglementaire & Conformité HSE")
+st.title("🛡️ Contrôle réglementaire")
 st.caption("Plateforme synchronisée en temps réel avec Google Sheets — Accès par QR Code")
 
 # --- BANDEAU DE MÉTRIQUES ---
