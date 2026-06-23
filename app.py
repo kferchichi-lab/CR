@@ -50,11 +50,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 SOUS_EQUIPEMENTS = {
-    "Installations électriques": ["TGBT Cellule A", "Armoire Secondaire", "Transformateur Haute Tension", "Groupe Électrogène"],
-    "Equipement de levage": ["Pont Roulant 5T", "Grue Mobile", "Chariot Élévateur", "Palan Électrique"],
-    "Sécurité incendie": ["Système d'extinction auto", "Centrale Alarme Incendie", "Réseau RIA", "Blocs Autonomes (BAES)"],
-    "Installation de gaz": ["Vanne de Police Principale", "Détendeur de Gaz", "Réseau de Tuyauterie"],
-    "Appareil pression de gaz": ["Compresseur d'air", "Cuve de Stockage", "Soupape de Sécurité"]
+    "Installations électriques": [],
+    "Equipement de levage": ["Pont Roulant", "Chariot Élévateur", "Palan Électrique"],
+    "Sécurité incendie": [],
+    "Installation de gaz": ["Industrielle", "Chaudière"],
+    "Appareil pression de gaz": ["Réservoir d'air comprimé"]
 }
 
 # --- SIDEBAR ---
