@@ -42,7 +42,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # URL de votre Google Sheet (À remplacer par votre vrai lien)
-URL_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/VOTRE_ID_DE_SHEET_ICI/edit?usp=sharing"
+URL_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/1ZK6VWg_gcCO70nt6DTyYogDeNeQUgovFmwWQufMVO-M/edit?gid=1880221270#gid=1880221270"
 
 # --- SIMULATION DE DONNÉES PROPRES (Le temps que vous liiez votre Sheet) ---
 if 'df_rapports' not in st.session_state:
