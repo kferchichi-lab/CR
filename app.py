@@ -130,7 +130,7 @@ with tab1:
             df_f = df_f[df_f["Site"].astype(str).str.strip() == f_site]
             
         # 🛠️ CORRECTION DU FILTRE ANNÉE : Conversion numérique des deux côtés pour ignorer le ".0"
-        if f_annee != "Tous" and "Exercice" in df_f.columns: 
+        if f_annee != "Tous" and "Année" in df_f.columns: 
             df_f = df_f[pd.to_numeric(df_f["Exercice"], errors='coerce') == int(f_annee)]
             
         # Filtre Catégorie
