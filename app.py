@@ -5,7 +5,7 @@ import datetime
 import re
 
 st.set_page_config(
-    page_title="Contrôle Réglementaire HSE",
+    page_title="Contrôle Réglementaire",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -257,7 +257,7 @@ st.markdown(
             Tableau de Bord Réglementaire
         </h1>
         <p style="font-size: 1.05rem; color: #64748B; margin: 0; font-weight: 400;">
-            Suivi HSE de conformité en temps réel — Synchronisé avec Direction Maintenance
+            Suivi de conformité en temps réel — Synchronisé avec Direction Maintenance
         </p>
     </div>
     """,
