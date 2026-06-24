@@ -554,5 +554,4 @@ if acces_autorise:
                 }
                 st.dataframe(pd.DataFrame(data_secours), hide_index=True, use_container_width=True)
     else:
-                # Correction fuseau horaire pour les données de secours
-    pass
+        pass
