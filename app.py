@@ -248,15 +248,26 @@ if not acces_autorise and role == "Visiteur":
             st.stop()
 
 # ==========================================
-# EN-TÊTE DE PAGE CENTRALISÉ & KPI BANNER
+# 5. EN-TÊTE DE PAGE CENTRALISÉ (CORRIGÉ & AJUSTÉ)
 # ==========================================
+# Nettoyage CSS pour forcer le conteneur Streamlit sous-jacent à se centrer
+st.markdown("""
+    <style>
+    /* Force le centrage des blocs de texte markdown dans la zone principale */
+    .stMarkdown div p, .stMarkdown div h1 {
+        text-align: center !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Bloc En-tête Haute Précision
 st.markdown(
     """
-    <div style="text-align: center; margin-top: 10px; margin-bottom: 35px;">
-        <h1 style="font-size: 2.6rem; font-weight: 800; color: #0F172A; margin-bottom: 6px; letter-spacing: -1px;">
+    <div style="width: 100%; text-align: center; margin: 10px auto 35px auto; display: block;">
+        <h1 style="text-align: center; font-size: 2.6rem; font-weight: 800; color: #0F172A; margin: 0 0 6px 0; padding: 0; letter-spacing: -1px; line-height: 1.2;">
             Tableau de Bord Réglementaire
         </h1>
-        <p style="font-size: 1.05rem; color: #64748B; margin: 0; font-weight: 400;">
+        <p style="text-align: center; font-size: 1.05rem; color: #64748B; margin: 0 auto; padding: 0; font-weight: 400; line-height: 1.5; max-width: 800px;">
             Suivi de conformité en temps réel — Synchronisé avec Direction Maintenance
         </p>
     </div>
