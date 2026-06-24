@@ -2,6 +2,7 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 import datetime
+import pytz
 import re
 
 st.set_page_config(
@@ -231,10 +232,21 @@ if not acces_autorise and role == "Visiteur":
     
     email_saisi = st.text_input("Adresse e-mail :", placeholder="exemple@domain.com")
     
+    # Importez pytz au tout début de votre fichier si ce n'est pas déjà fait :
+# import pytz
+
     if st.button("Valider l'accès", type="primary"):
         if format_email_valide(email_saisi):
             st.session_state.email_visiteur = email_saisi
-            maintenant = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+            
+            # --- CORRECTION DU FUSEAU HORAIRE ---
+            # 1. Définir le fuseau horaire local (Exemple : 'Africa/Tunis' ou 'Europe/Paris')
+            tz_local = pytz.timezone('Africa/Tunis') 
+            
+            # 2. Capturer l'instant présent et lui appliquer le fuseau horaire local
+            maintenant = datetime.datetime.now(tz_local).strftime("%d/%m/%Y %H:%M")
+            # ------------------------------------
+
             if conn_logs:
                 try:
                     query = f"INSERT INTO Logs (Date, Email) VALUES ('{maintenant}', '{email_saisi}');"
@@ -243,9 +255,6 @@ if not acces_autorise and role == "Visiteur":
                     pass
             st.success("Accès accordé.")
             st.rerun()
-        else:
-            st.error("Veuillez saisir une adresse e-mail valide.")
-            st.stop()
 
 # ==========================================
 # 5. EN-TÊTE DE PAGE CENTRALISÉ (CORRIGÉ & AJUSTÉ)
@@ -542,5 +551,13 @@ if acces_autorise:
                 }
                 st.dataframe(pd.DataFrame(data_secours), hide_index=True, use_container_width=True)
 else:
-    # Si le visiteur n'a pas tapé son mail, on ne met rien du tout ici (l'écran reste vide sous le formulaire)
+                # Correction fuseau horaire pour les données de secours
+                tz_local = pytz.timezone('Africa/Tunis')
+                maintenant_secours = datetime.datetime.now(tz_local).strftime("%d/%m/%Y %H:%M")
+                
+                data_secours = {
+                    "Date & Heure d'accès": [maintenant_secours],
+                    "Utilisateur (E-mail saisi)": [st.session_state.get("email_visiteur", "aucun_visiteur@gmail.com")]
+                }
+                st.dataframe(pd.DataFrame(data_secours), hide_index=True, use_container_width=True)
     pass
