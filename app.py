@@ -550,7 +550,7 @@ if acces_autorise:
                 
                 data_secours = {
                     "Date & Heure d'accès": [maintenant_secours],
-                    "Utilisateur (E-mail saisi)": [st.session_state.get("email_visiteur", "aucun_visiteur@gmail.com")]
+                    "Utilisateur": [st.session_state.get("email_visiteur", "aucun_visiteur@gmail.com")]
                 }
                 st.dataframe(pd.DataFrame(data_secours), hide_index=True, use_container_width=True)
     else:
