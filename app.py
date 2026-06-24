@@ -338,9 +338,33 @@ if acces_autorise:
         return url
 
     # --- PARTIE 1 : INTERFACE DES RAPPORTS ---
+  # --- PARTIE 1 : INTERFACE DES RAPPORTS ---
     with tab1:
+        # Injection CSS locale pour aligner les titres des filtres au centre
+        st.markdown("""
+            <style>
+            /* Centre le titre du bloc de conteneur de filtres */
+            .filter-title {
+                text-align: center !important;
+                font-weight: 600; 
+                color: #1E293B; 
+                margin-top: 0; 
+                margin-bottom: 15px;
+                width: 100%;
+            }
+            /* Force le centrage des labels au-dessus de chaque selectbox Streamlit */
+            div[data-testid="stSelectbox"] label p {
+                text-align: center !important;
+                width: 100%;
+                display: block;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
         with st.container(border=True):
-            st.markdown("<p style='font-weight: 600; color: #1E293B; margin-top:0; margin-bottom: 10px;'>🎛️ Filtres de recherche avancés</p>", unsafe_allow_html=True)
+            # Utilisation d'une classe HTML personnalisée pour centrer le titre principal du bloc
+            st.markdown("<p class='filter-title'>🎛️ Filtres de recherche avancés</p>", unsafe_allow_html=True)
+            
             c1, c2, c3, c4 = st.columns(4)
             with c1:
                 f_site = st.selectbox("Site", ["Tous", "SGB", "MEG"])
@@ -517,7 +541,6 @@ if acces_autorise:
                     "Utilisateur (E-mail saisi)": [st.session_state.get("email_visiteur", "aucun_visiteur@gmail.com")]
                 }
                 st.dataframe(pd.DataFrame(data_secours), hide_index=True, use_container_width=True)
-                st.info("💡 Pensez à créer un onglet nommé exactement 'Logs' avec deux colonnes ('Date' et 'Email') dans votre fichier Google Sheets pour activer la synchronisation automatique.")
 else:
     # Si le visiteur n'a pas tapé son mail, on ne met rien du tout ici (l'écran reste vide sous le formulaire)
     pass
