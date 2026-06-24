@@ -363,7 +363,7 @@ if acces_autorise:
 
         with st.container(border=True):
             # Utilisation d'une classe HTML personnalisée pour centrer le titre principal du bloc
-            st.markdown("<p class='filter-title'>🎛️ Filtres de recherche avancés</p>", unsafe_allow_html=True)
+            st.markdown("<p class='filter-title'>Filtres de recherche avancés</p>", unsafe_allow_html=True)
             
             c1, c2, c3, c4 = st.columns(4)
             with c1:
