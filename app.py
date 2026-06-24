@@ -552,12 +552,12 @@ if acces_autorise:
                 st.dataframe(pd.DataFrame(data_secours), hide_index=True, use_container_width=True)
 else:
                 # Correction fuseau horaire pour les données de secours
-                tz_local = pytz.timezone('Africa/Tunis')
-                maintenant_secours = datetime.datetime.now(tz_local).strftime("%d/%m/%Y %H:%M")
+    tz_local = pytz.timezone('Africa/Tunis')
+    maintenant_secours = datetime.datetime.now(tz_local).strftime("%d/%m/%Y %H:%M")
                 
-                data_secours = {
-                    "Date & Heure d'accès": [maintenant_secours],
-                    "Utilisateur (E-mail saisi)": [st.session_state.get("email_visiteur", "aucun_visiteur@gmail.com")]
-                }
-                st.dataframe(pd.DataFrame(data_secours), hide_index=True, use_container_width=True)
+    data_secours = {
+        "Date & Heure d'accès": [maintenant_secours],
+        "Utilisateur (E-mail saisi)": [st.session_state.get("email_visiteur", "aucun_visiteur@gmail.com")]
+        }
+    st.dataframe(pd.DataFrame(data_secours), hide_index=True, use_container_width=True)
     pass
