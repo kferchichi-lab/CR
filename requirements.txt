@@ -4,4 +4,4 @@ pandas
 qrcode
 pillow
 gspread
-pltz
+pytz
