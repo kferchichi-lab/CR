@@ -1,6 +1,8 @@
 import streamlit as st
 import plotly.express as px
 import pandas as pd
+import datetime
+import re
 
 st.set_page_config(
     page_title="Contrôle Réglementaire HSE",
@@ -8,14 +10,18 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
 # ==========================================
-# STYLE PREMIUM POUR LES FILTRES ET LES ONGLETS
+# INITIALISATION DES VARIABLES GLOBALES & SECURITÉ
 # ==========================================
+if "email_visiteur" not in st.session_state:
+    st.session_state.email_visiteur = None
+
+# Déclaration initiale essentielle pour éviter les plantages NameError
+tab3 = None 
+
 # ==========================================
-# STYLE PREMIUM CORRIGÉ POUR LES FILTRES ET LES ONGLETS
-# ==========================================
-# ==========================================
-# STYLE PREMIUM OPTIMISÉ (ONGLÈTS CLAIRS & LISIBLES)
+# STYLE PREMIUM OPTIMISÉ (INTERFACE & ONGLETS LISIBLES)
 # ==========================================
 st.html("""
 <style>
@@ -99,30 +105,7 @@ st.html("""
     }
 </style>
 """)
-# ==========================================
-# ⚠️ LIEN DE SYNCHRONISATION GOOGLE SHEETS
-# ==========================================
-URL_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/1ZK6VWg_gcCO70nt6DTyYogDeNeQUgovFmwWQufMVO-M/edit?gid=0#gid=0"
 
-# 2. CHARGEMENT OPTIMISÉ DES DONNÉES
-@st.cache_data(ttl=5)
-def charger_donnees_sheet(nom_onglet):
-    try:
-        base_url = URL_GOOGLE_SHEET.split("/edit")[0]
-        csv_url = f"{base_url}/gviz/tq?tqx=out:csv&sheet={nom_onglet}"
-        df = pd.read_csv(csv_url)
-        df = df.dropna(how='all')
-        return df
-    except Exception as e:
-        st.error(f"Erreur de connexion à l'onglet '{nom_onglet}'.")
-        return pd.DataFrame()
-
-df_rapports = charger_donnees_sheet("Rapports")
-df_planning = charger_donnees_sheet("Planning")
-
-# ==========================================
-# 3. FEUILLE DE STYLE CSS PREMIUM (EXECUTIVE UI)
-# ==========================================
 st.markdown("""
     <style>
     /* Importation d'une typographie moderne */
@@ -131,22 +114,6 @@ st.markdown("""
     html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebarView"] {
         font-family: 'Inter', sans-serif !important;
         background-color: #F8FAFC !important; /* Fond gris très clair ultra-moderne */
-    }
-    
-    /* Design des Onglets (Tabs) */
-    .stTabs [data-baseweb="tab"] {
-        font-size: 15px !important;
-        font-weight: 600 !important;
-        color: #64748B !important;
-        padding: 12px 20px !important;
-        transition: all 0.3s ease;
-    }
-    .stTabs [data-baseweb="tab"]:hover {
-        color: #1E3A8A !important;
-    }
-    .stTabs [aria-selected="true"] {
-        color: #1E3A8A !important;
-        border-bottom-color: #1E3A8A !important;
     }
 
     /* Style des formulaires et des encadrés */
@@ -170,6 +137,26 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# ==========================================
+# ⚠️ LIEN DE SYNCHRONISATION GOOGLE SHEETS
+# ==========================================
+URL_GOOGLE_SHEET = "https://docs.google.com/spreadsheets/d/1ZK6VWg_gcCO70nt6DTyYogDeNeQUgovFmwWQufMVO-M/edit?gid=0#gid=0"
+
+@st.cache_data(ttl=5)
+def charger_donnees_sheet(nom_onglet):
+    try:
+        base_url = URL_GOOGLE_SHEET.split("/edit")[0]
+        csv_url = f"{base_url}/gviz/tq?tqx=out:csv&sheet={nom_onglet}"
+        df = pd.read_csv(csv_url)
+        df = df.dropna(how='all')
+        return df
+    except Exception as e:
+        st.error(f"Erreur de connexion à l'onglet '{nom_onglet}'.")
+        return pd.DataFrame()
+
+df_rapports = charger_donnees_sheet("Rapports")
+df_planning = charger_donnees_sheet("Planning")
+
 SOUS_EQUIPEMENTS = {
     "Installations électriques": [],
     "Equipements de levage": ["Transpalette", "Table élévatrice", "Potence", "Pont roulant", "Plateforme de travail", "Nacelle", "Gerbeur", "Chariot élévateur", "Palan électrique", "Ascenseur"],
@@ -179,13 +166,12 @@ SOUS_EQUIPEMENTS = {
 }
 
 # ==========================================
-# 4. BARRE LATÉRALE (SIDEBAR DESIGN)
+# BARRE LATÉRALE (SIDEBAR DESIGN)
 # ==========================================
 with st.sidebar:
     st.markdown("<br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 4, 1]) 
     with col2:
-        # Logo de l'entreprise
         st.image("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s", use_container_width=True)
     
     st.markdown(
@@ -214,12 +200,10 @@ with st.sidebar:
             st.success("Accès administrateur validé")
         elif password:
             st.error("Code d'accès incorrect")
-# ==========================================
-# 2. CAPTURE DE L'EMAIL (À PLACER ICI 👇)
-# ==========================================
-import datetime
-import re
 
+# ==========================================
+# RECAPTURE DES LOGS ET E-MAIL VISITEUR
+# ==========================================
 def format_email_valide(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+", email) is not None
 
@@ -228,10 +212,6 @@ try:
 except Exception:
     conn_logs = None
 
-if "email_visiteur" not in st.session_state:
-    st.session_state.email_visiteur = None
-
-# Maintenant, 'role' existe, donc cette ligne ne fera plus d'erreur !
 if not st.session_state.email_visiteur and role == "Visiteur":
     st.markdown("""
         <div style="background: white; padding: 20px; border-radius: 12px; border-left: 5px solid #0EA5E9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 20px;">
@@ -245,7 +225,6 @@ if not st.session_state.email_visiteur and role == "Visiteur":
     if st.button("Valider l'accès", type="primary"):
         if format_email_valide(email_saisi):
             st.session_state.email_visiteur = email_saisi
-            
             maintenant = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
             if conn_logs:
                 try:
@@ -253,14 +232,14 @@ if not st.session_state.email_visiteur and role == "Visiteur":
                     conn_logs.query(query)
                 except Exception:
                     pass
-            
             st.success("Accès accordé.")
             st.rerun()
         else:
             st.error("Veuillez saisir une adresse e-mail valide.")
             st.stop()
+
 # ==========================================
-# 5. EN-TÊTE DE PAGE CENTRALISÉ
+# EN-TÊTE DE PAGE CENTRALISÉ & KPI BANNER
 # ==========================================
 st.markdown(
     """
@@ -276,9 +255,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ==========================================
-# 6. BANDEAU DE CARTES KPI DESIGN CORPO (PREMIUM)
-# ==========================================
 val_total_rapports = len(df_rapports) if not df_rapports.empty else 0
 val_controles_planifies = len(df_planning) if not df_planning.empty else 0
 
@@ -287,12 +263,10 @@ if not df_planning.empty and "Statut" in df_planning.columns:
 else:
     val_alertes = 0
 
-# Génération des cartes via colonnes et blocs HTML raffinés
 kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
-
 with kpi_col1:
     st.markdown(f"""
-        <div style="background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border-left: 5px solid #1E3A8A;">
+        <div style="background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-left: 5px solid #1E3A8A;">
             <p style="margin:0; font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Total Rapports Archivés</p>
             <p style="margin:8px 0 0 0; font-size: 34px; color: #0F172A; font-weight: 700; line-height: 1;">{val_total_rapports}</p>
         </div>
@@ -300,7 +274,7 @@ with kpi_col1:
 
 with kpi_col2:
     st.markdown(f"""
-        <div style="background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border-left: 5px solid #0EA5E9;">
+        <div style="background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-left: 5px solid #0EA5E9;">
             <p style="margin:0; font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Contrôles Planifiés</p>
             <p style="margin:8px 0 0 0; font-size: 34px; color: #0F172A; font-weight: 700; line-height: 1;">{val_controles_planifies}</p>
         </div>
@@ -309,7 +283,7 @@ with kpi_col2:
 with kpi_col3:
     couleur_alerte = "#EF4444" if val_alertes > 0 else "#10B981"
     st.markdown(f"""
-        <div style="background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border-left: 5px solid {couleur_alerte};">
+        <div style="background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border-left: 5px solid {couleur_alerte};">
             <p style="margin:0; font-size: 12px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Alertes Non-Conformité</p>
             <p style="margin:8px 0 0 0; font-size: 34px; color: {couleur_alerte}; font-weight: 700; line-height: 1;">{val_alertes}</p>
         </div>
@@ -317,10 +291,20 @@ with kpi_col3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Navigation principale par onglets
-tab1, tab2 = st.tabs(["📋 Rapports de contrôle archivés", "📅 Suivi de performance & Planification"])
+# ==========================================
+# NAVIGATION PRINCIPALE ET CONTENU DYNAMIQUE
+# ==========================================
+liste_onglets = ["📋 Rapports de contrôle archivés", "📅 Suivi de performance & Planification"]
 
-# FONCTION LIEN DIRECT DRIVE
+if role == "Responsable" and password_correct:
+    liste_onglets.append("👥 Suivi des Visites")
+
+onglets = st.tabs(liste_onglets)
+tab1 = onglets[0]
+tab2 = onglets[1]
+if len(onglets) > 2:
+    tab3 = onglets[2]
+
 def convertir_en_lien_direct(url):
     try:
         if "drive.google.com" in str(url) and "/file/d/" in str(url):
@@ -330,12 +314,8 @@ def convertir_en_lien_direct(url):
         pass
     return url
 
-
-# ==========================================
-# PARTIE 1 : INTERFACE DES RAPPORTS
-# ==========================================
+# --- PARTIE 1 : INTERFACE DES RAPPORTS ---
 with tab1:
-    # Conteneur des filtres épuré
     with st.container(border=True):
         st.markdown("<p style='font-weight: 600; color: #1E293B; margin-top:0; margin-bottom: 10px;'>🎛️ Filtres de recherche avancés</p>", unsafe_allow_html=True)
         c1, c2, c3, c4 = st.columns(4)
@@ -351,10 +331,8 @@ with tab1:
    
     st.markdown("<br><p style='font-size: 1.2rem; font-weight: 700; color: #0F172A; margin-bottom:10px;'>📂 Documents rattachés</p>", unsafe_allow_html=True)
     
-    # Filtrage intelligent
     df_f = df_rapports.copy()
     if not df_f.empty:
-        # Identification dynamique des colonnes de l'utilisateur (Robustesse)
         col_site = [c for c in df_f.columns if "site" in c.lower()]
         col_ex = [c for c in df_f.columns if "exerc" in c.lower() or "ann" in c.lower()]
         col_cat = [c for c in df_f.columns if "cat" in c.lower()]
@@ -364,21 +342,16 @@ with tab1:
 
         if f_site != "Tous" and col_site:
             df_f = df_f[df_f[col_site[0]].astype(str).str.strip() == f_site]
-            
         if f_annee != "Tous" and col_ex:
             df_f = df_f[pd.to_numeric(df_f[col_ex[0]], errors='coerce') == int(f_annee)]
-            
         if f_cat != "Tous" and col_cat:
             df_f = df_f[df_f[col_cat[0]].astype(str).str.strip() == f_cat]
-            
         if f_sous_eq != "Tous" and col_seq:
             df_f = df_f[df_f[col_seq[0]].astype(str).str.strip() == f_sous_eq]
 
     if not df_f.empty:
-        # Nettoyage des formats pour l'affichage directionnel
         if col_lien:
             df_f[col_lien[0]] = df_f[col_lien[0]].apply(convertir_en_lien_direct)
-
         if col_date:
             df_f[col_date[0]] = pd.to_datetime(df_f[col_date[0]], dayfirst=True, errors='coerce')
 
@@ -386,7 +359,6 @@ with tab1:
         nom_col_date = col_date[0] if col_date else "Date de dernier contrôle"
         nom_col_lien = col_lien[0] if col_lien else "Lien PDF"
 
-        # Affichage du tableau de données haute fidélité
         st.dataframe(
             df_f,
             column_config={
@@ -404,9 +376,8 @@ with tab1:
     else:
         st.warning("Aucun rapport ne correspond aux critères sélectionnés.")
 
-
-     # 📊 DEBUT DE LA SECTION GRAPHIQUES (PLURALS ET INDEXES SUR LES RAPPORTS ARCHIVÉS)
-    st.markdown("<br>", unsafe_allow_html=True)
+    # 📊 GRAPHIQUES PLACÉS EN DESSOUS DU TABLEAU DES RAPPORTS
+    st.markdown("<br><hr style='margin: 20px 0; border-color: #E2E8F0;'><p style='font-size: 1.2rem; font-weight: 700; color: #0F172A; margin-bottom:15px;'>📊 Analyses globales de l'archive</p>", unsafe_allow_html=True)
     if not df_rapports.empty:
         col_site_chart = [c for c in df_rapports.columns if "site" in c.lower()]
         col_cat_chart = [c for c in df_rapports.columns if "cat" in c.lower()]
@@ -418,14 +389,13 @@ with tab1:
             df_cat_count = df_rapports[col_cat_chart[0]].value_counts().reset_index()
             df_cat_count.columns = ['Domaine', 'Nombre']
 
-            # Création de 2 colonnes pour les graphiques
             chart_col1, chart_col2 = st.columns(2)
             
             # GRAPH 1 : Répartition par Site (Donut)
             with chart_col1:
                 st.markdown("""
                     <div style="background: white; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #E2E8F0; margin-bottom: 15px;">
-                        <p style="margin:0; font-size: 14px; color: #1E3A8A; font-weight: 600;">📊 Volume de rapports par Site</p>
+                        <p style="margin:0; font-size: 14px; color: #1E3A8A; font-weight: 600;">🏭 Volume de rapports par Site</p>
                     </div>
                 """, unsafe_allow_html=True)
                 
@@ -473,18 +443,13 @@ with tab1:
                 )
                 fig_cat.update_xaxes(showgrid=True, gridcolor='#E2E8F0')
                 st.plotly_chart(fig_cat, use_container_width=True, config={'displayModeBar': False})
-    # 📊 FIN DE LA SECTION GRAPHIQUES
 
-
-    # Panneau d'administration épuré
     if role == "Responsable" and password_correct:
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander("🛠️ Panneau d'administration (Accès Base de Données)"):
             st.markdown(f"En tant que responsable, vous pouvez modifier directement le registre : [Ouvrir le Google Sheets externe]({URL_GOOGLE_SHEET})")
 
-# ==========================================
-# PARTIE 2 : MAÎTRISE & PLANNING
-# ==========================================
+# --- PARTIE 2 : MAÎTRISE & PLANNING ---
 with tab2:
     st.markdown("<p style='font-size: 1.2rem; font-weight: 700; color: #0F172A; margin-bottom:10px;'>📅 Planification des contrôles obligatoires</p>", unsafe_allow_html=True)
     
@@ -492,7 +457,6 @@ with tab2:
         col_prochain = [c for c in df_planning.columns if "prochain" in c.lower() or "échéan" in c.lower()]
         nom_col_prochain = col_prochain[0] if col_prochain else "Prochain contrôle"
         
-        # Affichage du tableau du planning
         st.dataframe(
             df_planning,
             column_config={
@@ -509,16 +473,12 @@ with tab2:
         with st.expander("🛠️ Panneau d'administration (Gestion du Planning)"):
             st.markdown(f"Pour ajouter ou modifier des dates d'échéances de contrôle : [Modifier le calendrier Google Sheets]({URL_GOOGLE_SHEET})")
 
-
-# ==========================================
-# PARTIE 3 : ACCÈS RESTREINT RESPONSABLE (ONGLET LOGS)
-# ==========================================
-if tab3 and role == "Responsable":
+# --- PARTIE 3 : ACCÈS RESTREINT RESPONSABLE (ONGLET LOGS) ---
+if tab3 and role == "Responsable" and password_correct:
     with tab3:
         st.markdown("<p style='font-size: 1.2rem; font-weight: 700; color: #1E3A8A; margin-bottom:10px;'>👥 Registre des accès à la plateforme</p>", unsafe_allow_html=True)
         st.markdown("<p style='color: #64748B; font-size: 14px;'>Historique en temps réel des utilisateurs ayant consulté l'application.</p>", unsafe_allow_html=True)
         
-        # Chargement des vraies données depuis le Google Sheet
         df_logs = None
         if conn_logs:
             try:
@@ -526,12 +486,9 @@ if tab3 and role == "Responsable":
             except Exception:
                 pass
                 
-        # Si le fichier Google Sheet est configuré, on affiche le vrai tableau, sinon un exemple
         if df_logs is not None and not df_logs.empty:
             st.dataframe(df_logs, hide_index=True, use_container_width=True)
         else:
-            # Tableau de secours si l'onglet "Logs" n'est pas encore créé sur votre Google Sheet
-            import pandas as pd
             data_secours = {
                 "Date & Heure d'accès": [datetime.datetime.now().strftime("%d/%m/%Y %H:%M")],
                 "Utilisateur (E-mail saisi)": [st.session_state.get("email_visiteur", "aucun_visiteur@gmail.com")]
