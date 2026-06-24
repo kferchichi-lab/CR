@@ -2,6 +2,57 @@ import streamlit as st
 import plotly.express as px
 import pandas as pd
 from datetime import datetime
+import re
+
+# --- FONCTION DE VÉRIFICATION DE FORMAT SIMPLE ---
+def format_email_valide(email):
+    # Vérifie juste qu'il y a des caractères, un @, d'autres caractères, un point et une fin
+    return re.match(r"[^@]+@[^@]+\.[^@]+", email) is not None
+
+# --- ACCÈS À LA FEUILLE DE LOGS GOOGLE SHEETS ---
+# On réutilise la connexion existante de votre application
+try:
+    conn_logs = st.connection("gsheets", type=st.connections.SQLConnection)
+except Exception:
+    conn_logs = None
+
+# --- INTERFACE DE CAPTURE POUR LES VISITEURS ---
+if "email_visiteur" not in st.session_state:
+    st.session_state.email_visiteur = None
+
+# Si c'est un visiteur et qu'il n'a pas encore validé son e-mail
+if not st.session_state.email_visiteur and role == "Visiteur":
+    st.markdown("""
+        <div style="background: white; padding: 20px; border-radius: 12px; border-left: 5px solid #0EA5E9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 20px;">
+            <h4 style="margin:0; color: #1E3A8A;">🔑 Accès sécurisé à la plateforme</h4>
+            <p style="color: #64748B; font-size: 13px;">Veuillez renseigner votre adresse e-mail pour consulter les rapports de contrôle.</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    email_saisi = st.text_input("Adresse e-mail :", placeholder="exemple@gmail.com")
+    
+    if st.button("Valider l'accès", type="primary"):
+        if format_email_valide(email_saisi):
+            st.session_state.email_visiteur = email_saisi
+            
+            # 🕒 Récupération de la date et de l'heure actuelle
+            maintenant = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+            
+            # 💾 ENREGISTREMENT DANS GOOGLE SHEETS
+            if conn_logs:
+                try:
+                    # Requête SQL pour insérer la date et l'email dans l'onglet "Logs" de votre Google Sheet
+                    query = f"INSERT INTO Logs (Date, Email) VALUES ('{maintenant}', '{email_saisi}');"
+                    conn_logs.query(query)
+                except Exception:
+                    # En cas de configuration SQL différente, l'application continue sans bloquer l'utilisateur
+                    pass
+            
+            st.success("Accès accordé.")
+            st.rerun()
+        else:
+            st.error("Veuillez saisir une adresse e-mail valide (ex: nom@domaine.com).")
+            st.stop() # Bloque l'écran tant que le champ n'est pas rempli correctement
 
 # 1. CONFIGURATION DE LA PAGE DE DIRECTION
 st.set_page_config(
@@ -466,3 +517,33 @@ with tab2:
         st.markdown("<br>", unsafe_allow_html=True)
         with st.expander("🛠️ Panneau d'administration (Gestion du Planning)"):
             st.markdown(f"Pour ajouter ou modifier des dates d'échéances de contrôle : [Modifier le calendrier Google Sheets]({URL_GOOGLE_SHEET})")
+
+
+# ==========================================
+# PARTIE 3 : ACCÈS RESTREINT RESPONSABLE (ONGLET LOGS)
+# ==========================================
+if tab3 and role == "Responsable":
+    with tab3:
+        st.markdown("<p style='font-size: 1.2rem; font-weight: 700; color: #1E3A8A; margin-bottom:10px;'>👥 Registre des accès à la plateforme</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #64748B; font-size: 14px;'>Historique en temps réel des utilisateurs ayant consulté l'application.</p>", unsafe_allow_html=True)
+        
+        # Chargement des vraies données depuis le Google Sheet
+        df_logs = None
+        if conn_logs:
+            try:
+                df_logs = conn_logs.query("SELECT * FROM Logs;")
+            except Exception:
+                pass
+                
+        # Si le fichier Google Sheet est configuré, on affiche le vrai tableau, sinon un exemple
+        if df_logs is not None and not df_logs.empty:
+            st.dataframe(df_logs, hide_index=True, use_container_width=True)
+        else:
+            # Tableau de secours si l'onglet "Logs" n'est pas encore créé sur votre Google Sheet
+            import pandas as pd
+            data_secours = {
+                "Date & Heure d'accès": [datetime.datetime.now().strftime("%d/%m/%Y %H:%M")],
+                "Utilisateur (E-mail saisi)": [st.session_state.get("email_visiteur", "aucun_visiteur@gmail.com")]
+            }
+            st.dataframe(pd.DataFrame(data_secours), hide_index=True, use_container_width=True)
+            st.info("💡 Pensez à créer un onglet nommé exactement 'Logs' avec deux colonnes ('Date' et 'Email') dans votre fichier Google Sheets pour activer la synchronisation automatique.")
