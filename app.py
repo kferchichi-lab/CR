@@ -656,7 +656,6 @@ if acces_autorise:
 
             # --- SECTION PRÉSENCE ---
             st.markdown("### 🟢 Présence en temps réel")
-            st.caption(f"Un visiteur est considéré **En ligne** si son dernier signal date de moins de {SEUIL_EN_LIGNE_SECONDES}s. Mis à jour toutes les 30 secondes côté visiteur.")
 
             with st.spinner("Chargement de la présence..."):
                 df_presence = lire_presence()
