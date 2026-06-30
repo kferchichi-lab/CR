@@ -7,7 +7,189 @@ import re
 import time
 import requests
 import calendar
+import base64
+from weasyprint import HTML
 
+def generer_rapport_equipements_pdf(df_exigences, site_filtre):
+    """
+    Génère un rapport PDF de 5 pages pour un site spécifique (SGB ou MEG).
+    """
+    categories = [
+        "Installations électriques",
+        "Equipements de levage",
+        "Sécurité incendie",
+        "Installations de gaz",
+        "Appareil pression de gaz"
+    ]
+    
+    # 1. Filtrer uniquement les lignes de type "Equipement"
+    df_eq = df_exigences[df_exigences.iloc[:, 0].astype(str).str.strip().str.lower() == "equipement"]
+    
+    # 2. Filtrer selon le Site (Colonne index 1)
+    df_eq = df_eq[df_eq.iloc[:, 1].astype(str).str.strip().str.upper() == site_filtre.upper()]
+
+    html_content = f"""
+    <html>
+    <head>
+    <style>
+        @page {{
+            size: A4 portrait;
+            margin: 20mm 15mm;
+            @bottom-right {{
+                content: "Page " counter(page) " / " counter(pages);
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 9pt;
+                color: #64748B;
+            }}
+        }}
+        body {{
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+            font-size: 10pt;
+        }}
+        .page {{
+            page-break-after: always;
+        }}
+        .page:last-child {{
+            page-break-after: avoid;
+        }}
+        .header-title {{
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+            color: #1E3A8A;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #1E3A8A;
+            padding-bottom: 10px;
+        }}
+        .meta-info {{
+            margin-bottom: 25px;
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            padding: 15px;
+            border-radius: 6px;
+            line-height: 1.8;
+            font-size: 11pt;
+        }}
+        .category-title {{
+            font-size: 14pt;
+            color: #0EA5E9;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #0EA5E9;
+            padding-left: 8px;
+        }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }}
+        th, td {{
+            border: 1px solid #CBD5E1;
+            padding: 10px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #1E3A8A;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 9pt;
+        }}
+        .col-sub {{ width: 60%; }}
+        .col-nb {{ width: 20%; text-align: center; }}
+        .col-chk {{ width: 20%; text-align: center; }}
+        .td-center {{ text-align: center; }}
+        
+        .checkbox-box {{
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 1px solid #475569;
+            border-radius: 2px;
+            margin-top: 3px;
+        }}
+        .signature-section {{
+            margin-top: 40px;
+            width: 100%;
+            border-top: 1px dashed #CBD5E1;
+            padding-top: 15px;
+        }}
+        .signature-title {{
+            font-weight: bold;
+            text-decoration: underline;
+            margin-bottom: 60px;
+        }}
+    </style>
+    </head>
+    <body>
+    """
+
+    for cat in categories:
+        # Filtrer par catégorie parmi les équipements du site
+        df_cat = df_eq[df_eq.iloc[:, 2].astype(str).str.strip() == cat]
+        
+        html_content += f"""
+        <div class="page">
+            <div class="header-title">Rapport d'Inspection Réglementaire — Site {site_filtre.upper()}</div>
+            
+            <div class="meta-info">
+                <strong>Inspecteur technique :</strong> ............................................................<br>
+                <strong>Accompagnant :</strong> ........................................................................<br>
+                <strong>Date :</strong> .......................................................................................
+            </div>
+            
+            <div class="category-title">{cat}</div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-sub">Sous-équipements</th>
+                        <th class="col-nb">Nombre</th>
+                        <th class="col-chk">Case à cocher</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        
+        if not df_cat.empty:
+            for _, row in df_cat.iterrows():
+                sous_eq = row.iloc[3] if pd.notna(row.iloc[3]) else "-"
+                nombre = row.iloc[4] if pd.notna(row.iloc[4]) else "0"
+                html_content += f"""
+                    <tr>
+                        <td>{sous_eq}</td>
+                        <td class="td-center">{nombre}</td>
+                        <td class="td-center"><span class="checkbox-box"></span></td>
+                    </tr>
+                """
+        else:
+            html_content += """
+                <tr>
+                    <td colspan="3" style="text-align:center; color:#94A3B8; font-style: italic;">Aucun équipement enregistré pour cette catégorie sur ce site</td>
+                </tr>
+            """
+            
+        html_content += """
+                </tbody>
+            </table>
+            
+            <div class="signature-section">
+                <div class="signature-title">Signature :</div>
+            </div>
+        </div>
+        """
+        
+    html_content += """
+    </body>
+    </html>
+    """
+    
+    return HTML(string=html_content).write_pdf()
 st.set_page_config(
     page_title="Contrôle Réglementaire",
     page_icon="🛡️",
@@ -77,6 +259,58 @@ st.markdown("""<style>
     html,body,[data-testid="stAppViewContainer"],[data-testid="stSidebarView"]{font-family:'Inter',sans-serif!important;background-color:#F8FAFC!important;}
     [data-testid="stForm"],.stCornerRadius{background-color:#FFFFFF!important;border:1px solid #E2E8F0!important;border-radius:12px!important;}
     .stButton>button{background-color:#1E3A8A!important;color:white!important;border-radius:8px!important;border:none!important;font-weight:500!important;padding:10px 24px!important;}
+
+    /* === FIX ROBUSTE : empêche les boutons de s'écraser/se casser verticalement ===
+       Cause réelle : les colonnes Streamlit rétrécissent (flex-shrink) au lieu de
+       passer à la ligne quand il n'y a pas assez de place horizontale.
+       Solution : autoriser le retour à la ligne (flex-wrap) + bloquer le rétrécissement
+       des colonnes + forcer le texte des boutons sur une seule ligne (nowrap). */
+
+    div[data-testid="stHorizontalBlock"]{
+        flex-wrap:wrap!important;
+        row-gap:10px!important;
+        column-gap:10px!important;
+    }
+    div[data-testid="column"]{
+        flex:0 1 auto!important;
+        width:auto!important;
+        min-width:max-content!important;
+    }
+    .stButton, .stDownloadButton{
+        width:auto!important;
+    }
+    .stButton>button, .stDownloadButton>button,
+    div[data-testid="stButton"] button,
+    div[data-testid="stDownloadButton"] button,
+    button[kind="primary"], button[kind="secondary"],
+    button[data-testid^="baseButton"]{
+        white-space:nowrap!important;
+        width:auto!important;
+        min-width:unset!important;
+        height:auto!important;
+        line-height:1.3!important;
+        font-size:14px!important;
+        padding:10px 18px!important;
+        display:inline-flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+    }
+    /* Les libellés des boutons sont parfois dans un <p> ou <div> imbriqué
+       qui possède son propre comportement de retour à la ligne : on le neutralise. */
+    .stButton>button *, .stDownloadButton>button *,
+    div[data-testid="stButton"] button *,
+    div[data-testid="stDownloadButton"] button *,
+    button[kind="primary"] *, button[kind="secondary"] *{
+        white-space:nowrap!important;
+    }
+    .stDownloadButton>button{
+        background-color:#1E3A8A!important;
+        color:white!important;
+        border-radius:8px!important;
+        border:none!important;
+        font-weight:600!important;
+    }
+    .stDownloadButton>button:hover{background-color:#1D4ED8!important;}
 </style>""", unsafe_allow_html=True)
 
 # ==========================================
@@ -191,7 +425,64 @@ def lire_presence():
 
 def lire_logs():
     return sheets_lire("Logs","A:B")
+def lire_exigences():
+    """Lit l'onglet Exigences."""
+    return sheets_lire("Exigences", "A:F")
 
+def ecrire_contrat(lien_pdf):
+    """Met à jour ou crée la ligne du contrat dans l'onglet Exigences."""
+    df = lire_exigences()
+    token = obtenir_access_token()
+    if not token:
+        return False, "Token invalide"
+
+    if not df.empty and "Type" in df.columns:
+        ligne_contrat = df[df["Type"] == "Contrat"]
+        if not ligne_contrat.empty:
+            num_ligne = ligne_contrat.index[0] + 2
+            url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/Exigences!F{num_ligne}"
+            resp = requests.put(url,
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                params={"valueInputOption": "RAW"},
+                json={"values": [[lien_pdf]]}, timeout=15)
+            return (resp.status_code == 200), ""
+
+    return sheets_append("Exigences", ["Contrat", "", "", "", "", lien_pdf])
+
+
+def supprimer_contrat():
+    """Vide le lien du contrat."""
+    df = lire_exigences()
+    token = obtenir_access_token()
+    if not token or df.empty or "Type" not in df.columns:
+        return False
+    ligne_contrat = df[df["Type"] == "Contrat"]
+    if ligne_contrat.empty:
+        return False
+    num_ligne = ligne_contrat.index[0] + 2
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/Exigences!F{num_ligne}"
+    resp = requests.put(url,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        params={"valueInputOption": "RAW"},
+        json={"values": [[""]]}, timeout=15)
+    return resp.status_code == 200
+
+
+def ajouter_equipement(site, categorie, sous_eq, nombre):
+    """Ajoute une ligne équipement dans Exigences."""
+    return sheets_append("Exigences", ["Equipement", site, categorie, sous_eq, str(nombre), ""])
+
+
+def supprimer_equipement_ligne(num_ligne_sheet):
+    """Vide une ligne équipement (remplace par des cellules vides)."""
+    token = obtenir_access_token()
+    if not token: return False
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/Exigences!A{num_ligne_sheet}:F{num_ligne_sheet}"
+    resp = requests.put(url,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        params={"valueInputOption": "RAW"},
+        json={"values": [["", "", "", "", "", ""]]}, timeout=15)
+    return resp.status_code == 200
 # ==========================================
 # CHARGEMENT DONNÉES
 # ==========================================
@@ -313,11 +604,12 @@ if acces_autorise:
 
     st.markdown("<br>",unsafe_allow_html=True)
 
-    liste_onglets=["📋 Rapports de contrôle archivés","📅 Suivi de performance & Planification"]
-    if role=="Responsable" and password_correct: liste_onglets.append("👥 Statistiques")
-    onglets=st.tabs(liste_onglets)
-    tab1,tab2=onglets[0],onglets[1]
-    if len(onglets)>2: tab3=onglets[2]
+    liste_onglets = ["📋 Rapports de contrôle archivés","📅 Suivi de performance & Planification","📌 Exigences"]
+    if role == "Responsable" and password_correct:
+        liste_onglets.append("👥 Statistiques")
+    onglets = st.tabs(liste_onglets)
+    tab1, tab2, tab_exigences = onglets[0], onglets[1], onglets[2]
+    if len(onglets) > 3: tab3 = onglets[3]
 
     def convertir_lien(url):
         try:
@@ -668,44 +960,250 @@ if acces_autorise:
                             reel_fmt=c_reel.strftime("%d/%m/%Y") if pd.notna(c_reel) else None
                             next_fmt=c_next.strftime("%d/%m/%Y") if pd.notna(c_next) else "—"
                             j_txt  =f"⚠️ {abs(c_jours)}j de retard" if c_jours<0 else f"Dans {c_jours} j"
-                            if reel_fmt:
-                                date_ctrl_html = (
-                                    "<p style='margin:0 0 2px 0;font-size:10px;color:#94a3b8;'>Date réelle visite</p>"
-                                    f"<p style='margin:0 0 6px 0;font-size:11px;color:#059669;font-weight:600;'>✅ {reel_fmt}</p>"
-                                    "<p style='margin:0 0 2px 0;font-size:10px;color:#94a3b8;'>Date planifiée initiale</p>"
-                                    f"<p style='margin:0 0 6px 0;font-size:11px;color:#94a3b8;text-decoration:line-through;'>{date_fmt}</p>"
-                                )
-                            else:
-                                date_ctrl_html = (
-                                    "<p style='margin:0 0 2px 0;font-size:10px;color:#94a3b8;'>Date planifiée</p>"
-                                    f"<p style='margin:0 0 6px 0;font-size:11px;color:#334155;font-weight:500;'>{date_fmt}</p>"
-                                )
-                            label_html = f"<p style='margin:0 0 4px 0;font-size:11px;color:#64748B;'>⚙️ {c_label}</p>" if c_label else ""
-                            carte_html = (
-                                f"<div style='background:white;border-top:4px solid {c_col};padding:14px;border-radius:8px;"
-                                f"box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:8px;'>"
-                                f"<p style='margin:0 0 8px 0;font-size:12px;font-weight:700;color:#1E293B;'>{c_cat}</p>"
-                                f"<p style='margin:0 0 4px 0;font-size:11px;color:#475569;'>🏢 <b>{c_site}</b></p>"
-                                f"{label_html}"
-                                f"<hr style='border:none;border-top:1px solid #F1F5F9;margin:8px 0;'>"
-                                f"{date_ctrl_html}"
-                                f"<p style='margin:0 0 2px 0;font-size:10px;color:#94a3b8;'>Prochaine échéance</p>"
-                                f"<p style='margin:0 0 6px 0;font-size:11px;color:#334155;font-weight:500;'>{next_fmt}</p>"
-                                f"<span style='display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;"
-                                f"background:{c_col}22;color:{c_col};'>{c_stat} — {j_txt}</span>"
-                                f"</div>"
-                            )
-                            st.markdown(carte_html, unsafe_allow_html=True)
+                            date_ctrl_html=f"""
+                                <p style='margin:0 0 2px 0;font-size:10px;color:#94a3b8;'>Date réelle visite</p>
+                                <p style='margin:0 0 6px 0;font-size:11px;color:#059669;font-weight:600;'>✅ {reel_fmt}</p>
+                                <p style='margin:0 0 2px 0;font-size:10px;color:#94a3b8;'>Date planifiée initiale</p>
+                                <p style='margin:0 0 6px 0;font-size:11px;color:#94a3b8;text-decoration:line-through;'>{date_fmt}</p>
+                            """ if reel_fmt else f"""
+                                <p style='margin:0 0 2px 0;font-size:10px;color:#94a3b8;'>Date planifiée</p>
+                                <p style='margin:0 0 6px 0;font-size:11px;color:#334155;font-weight:500;'>{date_fmt}</p>
+                            """
+                            st.markdown(f"""<div style='background:white;border-top:4px solid {c_col};padding:14px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:8px;'>
+                                <p style='margin:0 0 8px 0;font-size:12px;font-weight:700;color:#1E293B;'>{c_cat}</p>
+                                <p style='margin:0 0 4px 0;font-size:11px;color:#475569;'>🏢 <b>{c_site}</b></p>
+                                {"<p style='margin:0 0 4px 0;font-size:11px;color:#64748B;'>⚙️ "+c_label+"</p>" if c_label else ""}
+                                <hr style='border:none;border-top:1px solid #F1F5F9;margin:8px 0;'>
+                                {date_ctrl_html}
+                                <p style='margin:0 0 2px 0;font-size:10px;color:#94a3b8;'>Prochaine échéance</p>
+                                <p style='margin:0 0 6px 0;font-size:11px;color:#334155;font-weight:500;'>{next_fmt}</p>
+                                <span style='display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;background:{c_col}22;color:{c_col};'>{c_stat} — {j_txt}</span>
+                            </div>""",unsafe_allow_html=True)
                 elif evenements and jour_sel is None:
                     st.info("💡 Cliquez sur un jour coloré du calendrier pour voir les détails du contrôle.")
+    # ---- ONGLET EXIGENCES ----
+    with tab_exigences:
+        st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;margin-bottom:15px;'>📌 Exigences réglementaires</p>", unsafe_allow_html=True)
 
+        df_exig = lire_exigences()
+
+    # ===== SECTION 1 : CONTRAT D'ABONNEMENT =====
+        st.markdown("### 📄 Contrat d'abonnement 2026")
+
+        lien_contrat = ""
+        if not df_exig.empty and "Type" in df_exig.columns:
+            ligne_c = df_exig[df_exig["Type"] == "Contrat"]
+            if not ligne_c.empty:
+                lien_contrat = str(ligne_c.iloc[0].get("Lien_PDF", "")).strip()
+
+        col_contrat, col_action = st.columns([5, 1])
+        with col_contrat:
+            if lien_contrat and lien_contrat.lower() != "nan":
+                st.markdown(f"""<div style='background:white;padding:16px 20px;border-radius:10px;
+                    box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:4px solid #1E3A8A;
+                    display:flex;align-items:center;justify-content:space-between;'>
+                    <span style='font-size:14px;font-weight:600;color:#1E293B;'>📑 Contrat d'abonnement 2026</span>
+                    <a href='{lien_contrat}' target='_blank' style='text-decoration:none;background:#1E3A8A;
+                        color:white;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;'>
+                        📥 Ouvrir / Télécharger</a>
+                </div>""", unsafe_allow_html=True)
+            else:
+                st.info("Aucun contrat n'a encore été ajouté.")
+
+        if role == "Responsable" and password_correct:
+            with st.expander("✏️ Gérer le contrat (Responsable)"):
+                nouveau_lien = st.text_input("Lien Google Drive du contrat PDF :",
+                    value=lien_contrat if lien_contrat.lower() != "nan" else "",
+                    placeholder="https://drive.google.com/file/d/...")
+                bc1, bc2 = st.columns(2)
+                with bc1:
+                    if st.button("💾", use_container_width=True):
+                        if nouveau_lien.strip():
+                            ok, err = ecrire_contrat(nouveau_lien.strip())
+                            if ok:
+                                st.success("✅ Contrat mis à jour !")
+                                st.rerun()
+                            else:
+                                st.error(f"Erreur : {err}")
+                        else:
+                            st.warning("Veuillez coller un lien.")
+                with bc2:
+                    if st.button("🗑️", use_container_width=True):
+                        if supprimer_contrat():
+                            st.success("✅ Contrat supprimé.")
+                            st.rerun()
+                        else:
+                            st.error("Erreur lors de la suppression.")
+
+        st.markdown("<br><hr style='border-color:#E2E8F0;'>", unsafe_allow_html=True)     
+        if not df_exig.empty:
+            st.markdown("### 📥 Téléchargement des Rapports par Site")
+        
+            col_sgb, col_meg = st.columns(2)
+            date_str = datetime.date.today().strftime('%d_%m_%Y')
+        
+            with col_sgb:
+                with st.spinner("Préparation du rapport SGB..."):
+                    try:
+                        pdf_sgb = generer_rapport_equipements_pdf(df_exig, "SGB")
+                        st.download_button(
+                            label="📄 Rapport PDF — SGB",
+                            data=pdf_sgb,
+                            file_name=f"Rapport_Inspection_SGB_{date_str}.pdf",
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Erreur PDF SGB : {e}")
+                    
+            with col_meg:
+                with st.spinner("Préparation du rapport MEG..."):
+                    try:
+                        pdf_meg = generer_rapport_equipements_pdf(df_exig, "MEG")
+                        st.download_button(
+                            label="📄 Rapport PDF — MEG",
+                            data=pdf_meg,
+                            file_name=f"Rapport_Inspection_MEG_{date_str}.pdf",
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Erreur PDF MEG : {e}")
+                    
+            st.divider()
+
+    # ===== SECTION 3 : LISTE DES ÉQUIPEMENTS (ARBORESCENCE) =====
+        st.markdown("### 🏭 Liste des équipements soumis au contrôle")
+
+        df_equip = pd.DataFrame()
+        if not df_exig.empty and "Type" in df_exig.columns:
+            df_equip = df_exig[df_exig["Type"] == "Equipement"].copy()
+            if "Nombre" in df_equip.columns:
+                df_equip["Nombre"] = pd.to_numeric(df_equip["Nombre"], errors="coerce").fillna(0).astype(int)
+
+    # Initialisation propre du Session State
+        if "site_exig_sel" not in st.session_state: 
+            st.session_state.site_exig_sel = None
+        if "cat_exig_sel" not in st.session_state: 
+            st.session_state.cat_exig_sel = None
+
+    # Niveau 1 : choix du site
+        st.markdown("<p style='font-size:13px;color:#64748B;font-weight:600;margin-bottom:8px;'>Sélectionnez un site :</p>", unsafe_allow_html=True)
+        s1, s2, s3 = st.columns([1, 1, 3])
+    
+        with s1:
+            actif_sgb = (st.session_state.site_exig_sel == "SGB")
+            if st.button("🏢 SGB", use_container_width=True, type="primary" if actif_sgb else "secondary"):
+                st.session_state.site_exig_sel = "SGB"
+                st.session_state.cat_exig_sel = None  # Reset la catégorie si on change de site
+                st.rerun()
+            
+        with s2:
+            actif_meg = (st.session_state.site_exig_sel == "MEG")
+            if st.button("🏢 MEG", use_container_width=True, type="primary" if actif_meg else "secondary"):
+                st.session_state.site_exig_sel = "MEG"
+                st.session_state.cat_exig_sel = None  # Reset la catégorie si on change de site
+                st.rerun()
+
+    # --- CORRECTION DE LA LOGIQUE D'AFFICHAGE ---
+    # On se base TOUJOURS sur le session_state actuel, pas sur le clic du bouton direct
+        if st.session_state.site_exig_sel:
+            site_sel = st.session_state.site_exig_sel
+            st.markdown(f"<p style='font-size:13px;color:#64748B;font-weight:600;margin:16px 0 8px 0;'>Catégories — Site {site_sel} :</p>", unsafe_allow_html=True)
+
+            df_site = df_equip[df_equip["Site"] == site_sel] if not df_equip.empty else pd.DataFrame()
+
+            NOMS_COURTS_CAT = {
+                "Installations électriques": "⚡ Électriques",
+                "Equipements de levage":     "🏗️ Levage",
+                "Sécurité incendie":         "🔥 Incendie",
+                "Installations de gaz":      "🔵 Gaz",
+                "Appareil pression de gaz":  "⚙️ Pression gaz",
+            }
+
+        # Création dynamique des boutons de catégories
+            cat_cols = st.columns(5)
+            for i, (cat, couleur) in enumerate(COULEURS_CAT.items()):
+                with cat_cols[i % 5]:
+                    nb_total_cat = int(df_site[df_site["Categorie"] == cat]["Nombre"].sum()) if not df_site.empty else 0
+                    actif_cat = (st.session_state.cat_exig_sel == cat)
+                    label_court = NOMS_COURTS_CAT.get(cat, cat)
+                
+                    if st.button(f"{label_court} ({nb_total_cat})", key=f"cat_btn_{cat}", use_container_width=True,
+                                 type="primary" if actif_cat else "secondary",
+                                 help=f"{nb_total_cat} équipement(s) au total"):
+                        st.session_state.cat_exig_sel = cat
+                        st.rerun()
+
+        # Niveau 3 : sous-équipements de la catégorie choisie
+            if st.session_state.cat_exig_sel:
+                cat_sel = st.session_state.cat_exig_sel
+                st.markdown(f"<p style='font-size:13px;color:#64748B;font-weight:600;margin:16px 0 8px 0;'>Sous-équipements — {cat_sel} ({site_sel}) :</p>", unsafe_allow_html=True)
+
+                df_cat = df_site[df_site["Categorie"] == cat_sel] if not df_site.empty else pd.DataFrame()
+                couleur_cat = COULEURS_CAT.get(cat_sel, "#94a3b8")
+
+                if df_cat.empty:
+                    st.info(f"Aucun sous-équipement enregistré pour {cat_sel} sur le site {site_sel}.")
+                else:
+                    eq_cols = st.columns(3)
+                    for idx, (_, row_eq) in enumerate(df_cat.iterrows()):
+                        with eq_cols[idx % 3]:
+                            st.markdown(f"""<div style='background:white;border-left:4px solid {couleur_cat};
+                                padding:14px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.05);margin-bottom:10px;'>
+                                <p style='margin:0;font-size:13px;font-weight:600;color:#1E293B;'>{row_eq.get('Sous_equipement','')}</p>
+                                <p style='margin:6px 0 0 0;font-size:24px;font-weight:800;color:{couleur_cat};'>{int(row_eq.get('Nombre',0))}</p>
+                            </div>""", unsafe_allow_html=True)
+
+            # Gestion (ajout/suppression) — responsable uniquement
+                if role == "Responsable" and password_correct:
+                    with st.expander("✏️ Gérer les sous-équipements (Responsable)"):
+                        st.markdown("**Ajouter un sous-équipement :**")
+                        ac1, ac2, ac3 = st.columns([2, 1, 1])
+                        with ac1:
+                            nouv_seq = st.text_input("Nom du sous-équipement", key="nouv_seq_nom")
+                        with ac2:
+                            nouv_nb = st.number_input("Nombre", min_value=1, value=1, key="nouv_seq_nb")
+                        with ac3:
+                            st.write("")
+                            st.write("")
+                            if st.button("➕ Ajouter", use_container_width=True):
+                                if nouv_seq.strip():
+                                    ok, err = ajouter_equipement(site_sel, cat_sel, nouv_seq.strip(), nouv_nb)
+                                    if ok:
+                                        st.success("✅ Ajouté !")
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Erreur : {err}")
+                                else:
+                                    st.warning("Veuillez saisir un nom.")
+
+                        if not df_cat.empty:
+                            st.markdown("<br>**Supprimer un sous-équipement :**", unsafe_allow_html=True)
+                            for orig_idx, row_eq in df_cat.iterrows():
+                                dc1, dc2 = st.columns([5, 1])
+                                with dc1:
+                                    st.write(f"{row_eq.get('Sous_equipement','')} — {int(row_eq.get('Nombre',0))} unité(s)")
+                                with dc2:
+                                    if st.button("🗑️", key=f"del_eq_{orig_idx}"):
+                                        num_ligne_sheet = orig_idx + 2
+                                        if supprimer_equipement_ligne(num_ligne_sheet):
+                                            st.success("Supprimé !")
+                                            st.cache_data.clear()
+                                            st.rerun()
+                                        else:
+                                            st.error("Erreur lors de la suppression.")
+        else:
+            st.info("👆 Sélectionnez un site (SGB ou MEG) pour voir les catégories d'équipements.")
+
+    
     # ---- ONGLET 3 : PRÉSENCE & VISITES ----
     if tab3 and role=="Responsable" and password_correct:
         with tab3:
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>👥 Suivi des visites & Présence en temps réel</p>",unsafe_allow_html=True)
-            col_r,_=st.columns([1.5,5])
+            col_r,_=st.columns([1,5])
             with col_r:
-                if st.button("🔄", use_container_width=True): st.rerun()
+                if st.button("🔄"): st.rerun()
             st.markdown("### 🟢 Présence en temps réel")
             with st.spinner("Chargement..."):
                 df_presence=lire_presence()
