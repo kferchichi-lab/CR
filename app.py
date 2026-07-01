@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import plotly.express as px
 import pandas as pd
 import datetime
@@ -190,6 +191,161 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
     """
     
     return HTML(string=html_content).write_pdf()
+
+
+def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
+    """
+    Génère un rapport PDF premium regroupant tous les KPI de l'onglet KPI :
+    Taux de réalisation 2026, Taux planifié, Taux de respect de délai,
+    cartographie du taux de non-conformité, et points de réserve.
+    """
+    date_str = datetime.date.today().strftime('%d/%m/%Y')
+
+    def barre(pct, couleur):
+        pct = max(0, min(100, pct))
+        return f"""<div style="background:#E2E8F0;border-radius:6px;height:14px;width:100%;overflow:hidden;">
+            <div style="background:{couleur};height:100%;width:{pct}%;"></div></div>"""
+
+    k1 = kpi_data["kpi1"]; k2 = kpi_data["kpi2"]; k3 = kpi_data["kpi3"]
+
+    html_reserve_rows = ""
+    if df_reserve is not None and not df_reserve.empty:
+        for _, r in df_reserve.iterrows():
+            html_reserve_rows += (f"<tr><td>{r.get('Site','')}</td><td>{r.get('Categorie','')}</td>"
+                                   f"<td>{r.get('Sous_equipement','')}</td>"
+                                   f"<td style='text-align:center;'>{r.get('Nombre',0)}</td></tr>")
+    else:
+        html_reserve_rows = "<tr><td colspan='4' style='text-align:center;color:#94A3B8;'>Aucun point de réserve enregistré</td></tr>"
+
+    site_rows, cat_rows = "", ""
+    if df_reserve is not None and not df_reserve.empty and "Site" in df_reserve.columns:
+        tot = df_reserve["Nombre"].sum()
+        for site, grp in df_reserve.groupby("Site")["Nombre"].sum().items():
+            pct = round(grp/tot*100,1) if tot else 0
+            site_rows += (f"""<div style="margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;">
+                <span>{site}</span><span>{pct}% ({grp})</span></div>{barre(pct,'#1E3A8A')}</div>""")
+    if df_reserve is not None and not df_reserve.empty and "Categorie" in df_reserve.columns:
+        tot = df_reserve["Nombre"].sum()
+        for cat, grp in df_reserve.groupby("Categorie")["Nombre"].sum().items():
+            pct = round(grp/tot*100,1) if tot else 0
+            cat_rows += (f"""<div style="margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;">
+                <span>{cat}</span><span>{pct}% ({grp})</span></div>{barre(pct,'#0EA5E9')}</div>""")
+
+    carto_html = ""
+    if carto_b64:
+        carto_html = f"""
+        <div class="page">
+            <div class="category-title">🗺️ Taux de non-conformité de site</div>
+            <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
+            Cartographie de synthèse du taux de non-conformité par site et par catégorie d'équipement,
+            établie lors de la campagne de contrôle réglementaire 2026.</p>
+            <img src="data:image/png;base64,{carto_b64}" style="width:100%;border-radius:8px;border:1px solid #E2E8F0;"/>
+        </div>"""
+
+    html_content = f"""
+    <html><head><style>
+        @page {{ size: A4 portrait; margin: 20mm 15mm;
+            @bottom-right {{ content: "Page " counter(page) " / " counter(pages);
+                font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:9pt; color:#64748B; }} }}
+        body {{ font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#1E293B; margin:0; padding:0; font-size:10pt; }}
+        .page {{ page-break-after: always; }}
+        .page:last-child {{ page-break-after: avoid; }}
+        .logo-box {{ text-align:center; margin-bottom:8px; }}
+        .logo-box img {{ height:58px; }}
+        .header-title {{ text-align:center; font-size:20pt; font-weight:bold; color:#1E3A8A; margin:6px 0 4px 0;
+            text-transform:uppercase; letter-spacing:0.5px; }}
+        .header-sub {{ text-align:center; font-size:11pt; color:#64748B; margin-bottom:22px; }}
+        .meta-info {{ background:#F8FAFC; border:1px solid #E2E8F0; border-radius:6px; padding:14px 16px;
+            font-size:10pt; line-height:1.7; margin-bottom:25px; }}
+        .category-title {{ font-size:15pt; color:#0EA5E9; font-weight:bold; border-left:4px solid #0EA5E9;
+            padding-left:10px; margin:10px 0 16px 0; }}
+        .kpi-card {{ background:#F8FAFC; border:1px solid #E2E8F0; border-left:5px solid #1E3A8A; border-radius:8px;
+            padding:18px; margin-bottom:18px; }}
+        .kpi-title {{ font-size:13pt; font-weight:700; color:#0F172A; margin:0 0 6px 0; }}
+        .kpi-desc {{ font-size:9.5pt; color:#475569; margin:0 0 12px 0; line-height:1.5; }}
+        .kpi-value {{ font-size:26pt; font-weight:800; color:#1E3A8A; margin:0 0 10px 0; }}
+        table {{ width:100%; border-collapse:collapse; margin-bottom:20px; }}
+        th, td {{ border:1px solid #CBD5E1; padding:8px 10px; text-align:left; font-size:9pt; }}
+        th {{ background:#1E3A8A; color:white; text-transform:uppercase; font-size:8.5pt; font-weight:bold; }}
+    </style></head><body>
+
+    <div class="page">
+        <div class="logo-box"><img src="{logo_url}"/></div>
+        <div class="header-title">Rapport KPI — Contrôle Réglementaire</div>
+        <div class="header-sub">Tunisie Profilés d'Aluminium — Direction Maintenance &amp; TN</div>
+        <div class="meta-info">
+            <b>Date d'édition :</b> {date_str}<br>
+            <b>Objet :</b> Synthèse des indicateurs clés de performance (KPI) du suivi de conformité réglementaire —
+            taux de réalisation, planification, respect des délais, non-conformités et points de réserve.
+        </div>
+
+        <div class="category-title">📊 Indicateurs clés de performance</div>
+
+        <div class="kpi-card">
+            <p class="kpi-title">1. Taux de réalisation 2026</p>
+            <p class="kpi-desc">Proportion des contrôles réglementaires dont l'échéance théorique est comprise
+            entre le 01/01/2026 et le 31/12/2026, effectivement réalisés (date réelle de visite enregistrée)
+            par rapport au nombre total de contrôles dus sur cette période.</p>
+            <p class="kpi-value">{k1['taux']}%</p>
+            {barre(k1['taux'], '#10B981')}
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k1['realises']} réalisés / {k1['restants']} restants
+            — sur {k1['total']} contrôle(s) dû(s) en 2026</p>
+        </div>
+
+        <div class="kpi-card" style="border-left-color:#1E3A8A;">
+            <p class="kpi-title">2. Taux planifié</p>
+            <p class="kpi-desc">Part des contrôles pour lesquels une date réelle de visite a été effectivement
+            saisie, par rapport à ceux pour lesquels le système utilise encore la date de la dernière visite
+            connue comme estimation de planification.</p>
+            <p class="kpi-value">{k2['taux']}%</p>
+            {barre(k2['taux'], '#1E3A8A')}
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['avec_reelle']} avec date réelle / {k2['estimes']} estimé(s)
+            — sur {k2['total']} contrôle(s) au total</p>
+        </div>
+
+        <div class="kpi-card" style="border-left-color:#0EA5E9;">
+            <p class="kpi-title">3. Taux de respect de délai de visite</p>
+            <p class="kpi-desc">Proportion des visites réalisées dont l'écart entre la date réelle de contrôle
+            et l'échéance théorique initiale du cycle n'excède pas 3 jours, par rapport au nombre total
+            de visites réalisées.</p>
+            <p class="kpi-value">{k3['taux']}%</p>
+            {barre(k3['taux'], '#0EA5E9')}
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k3['respectes']} respecté(s) / {k3['non_respectes']} non respecté(s)
+            — sur {k3['total']} visite(s) réalisée(s)</p>
+        </div>
+    </div>
+
+    {carto_html}
+
+    <div class="page">
+        <div class="category-title">📌 Points de réserve</div>
+        <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
+        Liste consolidée des points de réserve relevés par site, catégorie et sous-équipement.</p>
+        <table>
+            <thead><tr><th>Site</th><th>Catégorie</th><th>Sous équipement</th><th>Nbre points</th></tr></thead>
+            <tbody>{html_reserve_rows}</tbody>
+        </table>
+
+        <div style="display:flex;gap:30px;">
+            <div style="flex:1;">
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par site</p>
+                {site_rows if site_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+            <div style="flex:1;">
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par catégorie</p>
+                {cat_rows if cat_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+        </div>
+    </div>
+
+    </body></html>
+    """
+
+    return HTML(string=html_content).write_pdf()
+
+
 st.set_page_config(
     page_title="Contrôle Réglementaire",
     page_icon="🛡️",
@@ -237,6 +393,16 @@ SOUS_EQUIPEMENTS = {
     "Installations de gaz": ["Industrielle","Chaudière"],
     "Appareil pression de gaz": []
 }
+
+LUCID_CARTOGRAPHIE_URL = "https://lucid.app/lucidspark/088f02a4-bdb7-4c79-8e28-64e05fc773c3/edit?beaconFlowId=69403DCAA7251095&invitationId=inv_16e69b3a-177f-4fb1-922e-fd6c28f294d5&page=0_0"
+
+def _charger_cartographie_b64():
+    """Charge l'image de cartographie du taux de non-conformité en base64 (fichier local)."""
+    try:
+        with open("Cartographie.png", "rb") as f:
+            return base64.b64encode(f.read()).decode("ascii")
+    except Exception:
+        return None
 
 # ==========================================
 # STYLE
@@ -483,6 +649,32 @@ def supprimer_equipement_ligne(num_ligne_sheet):
         params={"valueInputOption": "RAW"},
         json={"values": [["", "", "", "", "", ""]]}, timeout=15)
     return resp.status_code == 200
+
+
+# ==========================================
+# POINTS DE RÉSERVE (onglet dédié "PointsReserve")
+# ==========================================
+def lire_points_reserve():
+    """Lit l'onglet PointsReserve : Site | Categorie | Sous_equipement | Nombre."""
+    return sheets_lire("PointsReserve", "A:D")
+
+
+def ajouter_point_reserve(site, categorie, sous_eq, nombre):
+    """Ajoute une ligne dans l'onglet PointsReserve."""
+    return sheets_append("PointsReserve", [site, categorie, sous_eq, str(nombre)])
+
+
+def supprimer_ligne_generique(onglet, num_ligne_sheet, nb_colonnes):
+    """Vide une ligne (remplace par des cellules vides) dans un onglet donné, sur nb_colonnes colonnes (A..)."""
+    token = obtenir_access_token()
+    if not token: return False
+    derniere_col = chr(ord('A') + nb_colonnes - 1)
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/{onglet}!A{num_ligne_sheet}:{derniere_col}{num_ligne_sheet}"
+    resp = requests.put(url,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        params={"valueInputOption": "RAW"},
+        json={"values": [[""] * nb_colonnes]}, timeout=15)
+    return resp.status_code == 200
 # ==========================================
 # CHARGEMENT DONNÉES
 # ==========================================
@@ -607,9 +799,12 @@ if acces_autorise:
     liste_onglets = ["📋 Rapports de contrôle archivés","📅 Suivi de performance & Planification","📌 Exigences"]
     if role == "Responsable" and password_correct:
         liste_onglets.append("👥 Statistiques")
+        liste_onglets.append("📊 KPI")
     onglets = st.tabs(liste_onglets)
     tab1, tab2, tab_exigences = onglets[0], onglets[1], onglets[2]
+    tab_kpi = None
     if len(onglets) > 3: tab3 = onglets[3]
+    if len(onglets) > 4: tab_kpi = onglets[4]
 
     def convertir_lien(url):
         try:
@@ -1285,3 +1480,301 @@ if acces_autorise:
                     "Date":st.column_config.TextColumn("📅 Date & Heure"),
                     "Email":st.column_config.TextColumn("📧 E-mail")},
                     hide_index=True,use_container_width=True)
+
+    # ---- ONGLET 4 : KPI (Responsable uniquement) ----
+    if tab_kpi and role=="Responsable" and password_correct:
+        with tab_kpi:
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Indicateurs clés de performance (KPI)</p>",unsafe_allow_html=True)
+            col_r_kpi,_=st.columns([1,5])
+            with col_r_kpi:
+                if st.button("🔄",key="refresh_kpi"): st.cache_data.clear(); st.rerun()
+
+            # ---- Préparation des données de contrôle (même logique que l'onglet Planification) ----
+            col_cat_k   = [c for c in df_rapports.columns if "cat" in c.lower()]
+            col_date_k  = [c for c in df_rapports.columns if "date" in c.lower()]
+            col_site_k  = [c for c in df_rapports.columns if "site" in c.lower()]
+            col_label_k = [c for c in df_rapports.columns if "equip" in c.lower() or "label" in c.lower() or "nom" in c.lower()]
+            col_reelle_k= [c for c in df_rapports.columns if "reelle" in c.lower() or "réelle" in c.lower()]
+
+            if df_rapports.empty or not col_cat_k or not col_date_k:
+                st.info("Données insuffisantes dans l'onglet « Rapports » pour calculer les KPI.")
+                kpi_data = None
+            else:
+                df_k = df_rapports.copy()
+                df_k["_date_brute"]  = pd.to_datetime(df_k[col_date_k[0]], dayfirst=True, errors='coerce')
+                df_k["_date_reelle"] = pd.to_datetime(df_k[col_reelle_k[0]], dayfirst=True, errors='coerce') if col_reelle_k else pd.NaT
+                df_k = df_k.dropna(subset=["_date_brute"])
+
+                cles_k=[]
+                if col_site_k:  cles_k.append(col_site_k[0])
+                cles_k.append(col_cat_k[0])
+                if col_label_k: cles_k.append(col_label_k[0])
+                df_k = df_k.sort_values("_date_brute", ascending=True)
+                df_k = df_k.drop_duplicates(subset=cles_k, keep="last")
+
+                # ---- KPI 1 : Taux de réalisation 2026 (échéances théoriques comprises entre 01/01/2026 et 31/12/2026) ----
+                df_2026 = df_k[df_k["_date_brute"].dt.year == 2026]
+                nb_total_2026    = len(df_2026)
+                nb_realises_2026 = int(df_2026["_date_reelle"].notna().sum())
+                nb_restants_2026 = nb_total_2026 - nb_realises_2026
+                taux1 = round(nb_realises_2026/nb_total_2026*100,1) if nb_total_2026>0 else 0
+
+                # ---- KPI 2 : Taux planifié — dates réelles saisies vs estimées via la dernière visite ----
+                nb_total_all   = len(df_k)
+                nb_avec_reelle = int(df_k["_date_reelle"].notna().sum())
+                nb_estimes     = nb_total_all - nb_avec_reelle
+                taux2 = round(nb_avec_reelle/nb_total_all*100,1) if nb_total_all>0 else 0
+
+                # ---- KPI 3 : Taux de respect de délai de visite (écart ≤ 3j vs échéance théorique initiale) ----
+                df_realises_k = df_k[df_k["_date_reelle"].notna()].copy()
+                nb_visites_realisees = len(df_realises_k)
+                if nb_visites_realisees > 0:
+                    df_realises_k["_ecart"] = (df_realises_k["_date_reelle"] - df_realises_k["_date_brute"]).dt.days.abs()
+                    nb_respectes = int((df_realises_k["_ecart"] <= 3).sum())
+                else:
+                    nb_respectes = 0
+                nb_non_respectes = nb_visites_realisees - nb_respectes
+                taux3 = round(nb_respectes/nb_visites_realisees*100,1) if nb_visites_realisees>0 else 0
+
+                kpi_data = {
+                    "kpi1": {"taux":taux1, "realises":nb_realises_2026, "restants":nb_restants_2026, "total":nb_total_2026},
+                    "kpi2": {"taux":taux2, "avec_reelle":nb_avec_reelle, "estimes":nb_estimes, "total":nb_total_all},
+                    "kpi3": {"taux":taux3, "respectes":nb_respectes, "non_respectes":nb_non_respectes, "total":nb_visites_realisees},
+                }
+
+                k1c,k2c,k3c = st.columns(3)
+
+                with k1c:
+                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Taux de réalisation 2026</p>",unsafe_allow_html=True)
+                    if nb_total_2026>0:
+                        dfp1=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_realises_2026,nb_restants_2026]})
+                        fig1=px.pie(dfp1,values="Nombre",names="Statut",hole=0.6,color="Statut",
+                                    color_discrete_map={"Réalisés":"#10B981","Restants":"#EF4444"})
+                        fig1.update_traces(textposition='inside',textinfo='percent+label')
+                        fig1.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
+                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig1,use_container_width=True,config={'displayModeBar':False})
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% réalisés ({nb_realises_2026}/{nb_total_2026})</p>",unsafe_allow_html=True)
+                    else:
+                        st.info("Aucun contrôle avec échéance théorique en 2026.")
+
+                with k2c:
+                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Taux planifié</p>",unsafe_allow_html=True)
+                    if nb_total_all>0:
+                        dfp2=pd.DataFrame({"Statut":["Date réelle saisie","Estimée (dernière visite)"],"Nombre":[nb_avec_reelle,nb_estimes]})
+                        fig2=px.pie(dfp2,values="Nombre",names="Statut",hole=0.6,color="Statut",
+                                    color_discrete_map={"Date réelle saisie":"#1E3A8A","Estimée (dernière visite)":"#F59E0B"})
+                        fig2.update_traces(textposition='inside',textinfo='percent+label')
+                        fig2.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
+                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig2,use_container_width=True,config={'displayModeBar':False})
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% avec date réelle ({nb_avec_reelle}/{nb_total_all})</p>",unsafe_allow_html=True)
+                    else:
+                        st.info("Aucune donnée disponible.")
+
+                with k3c:
+                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤3j)</p>",unsafe_allow_html=True)
+                    if nb_visites_realisees>0:
+                        dfp3=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_respectes,nb_non_respectes]})
+                        fig3=px.pie(dfp3,values="Nombre",names="Statut",hole=0.6,color="Statut",
+                                    color_discrete_map={"Respecté":"#0EA5E9","Non respecté":"#EF4444"})
+                        fig3.update_traces(textposition='inside',textinfo='percent+label')
+                        fig3.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
+                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig3,use_container_width=True,config={'displayModeBar':False})
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux3}% respecté ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
+                    else:
+                        st.info("Aucune visite réalisée à ce jour.")
+
+            st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
+
+            # ================= TAUX DE NON-CONFORMITÉ DE SITE (CARTOGRAPHIE) =================
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>🗺️ Taux de non-conformité de site</p>",unsafe_allow_html=True)
+
+            carto_b64 = _charger_cartographie_b64()
+            if carto_b64:
+                vc1,vc2 = st.columns([5,1])
+                with vc2:
+                    st.markdown(f"<a href='{LUCID_CARTOGRAPHIE_URL}' target='_blank' style='display:inline-block;background:#1E3A8A;color:white;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;text-align:center;'>🔗 Ouvrir dans Lucid</a>",unsafe_allow_html=True)
+                components.html(f"""
+                <div id="carto-viewer" style="position:relative;width:100%;height:620px;overflow:hidden;
+                     background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;">
+                  <img id="carto-img" src="data:image/png;base64,{carto_b64}"
+                       style="position:absolute;top:0;left:0;transform-origin:0 0;cursor:grab;user-select:none;max-width:none;visibility:hidden;"
+                       draggable="false"/>
+                  <div style="position:absolute;bottom:14px;right:14px;display:flex;gap:8px;z-index:10;">
+                    <button id="carto-zoom-in" style="width:36px;height:36px;border-radius:8px;border:1px solid #CBD5E1;background:white;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);">➕</button>
+                    <button id="carto-zoom-out" style="width:36px;height:36px;border-radius:8px;border:1px solid #CBD5E1;background:white;font-size:16px;font-weight:700;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);">➖</button>
+                    <button id="carto-reset" style="width:36px;height:36px;border-radius:8px;border:1px solid #CBD5E1;background:white;font-size:15px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);">⟳</button>
+                  </div>
+                  <div style="position:absolute;top:10px;left:14px;font-size:11px;color:#64748B;background:rgba(255,255,255,0.85);
+                       padding:4px 10px;border-radius:6px;">🖱️ Molette pour zoomer • Glisser pour déplacer</div>
+                </div>
+                <script>
+                (function(){{
+                    let baseScale=1, scale=1, posX=0, posY=0, isDragging=false, startX=0, startY=0;
+                    const viewer=document.getElementById('carto-viewer');
+                    const img=document.getElementById('carto-img');
+
+                    function apply(){{ img.style.transform = 'translate('+posX+'px,'+posY+'px) scale('+scale+')'; }}
+
+                    function fitToView(){{
+                        const cw = viewer.clientWidth, ch = viewer.clientHeight;
+                        const nw = img.naturalWidth, nh = img.naturalHeight;
+                        if(!nw || !nh) return;
+                        baseScale = Math.min(cw/nw, ch/nh);
+                        scale = baseScale;
+                        posX = (cw - nw*scale)/2;
+                        posY = (ch - nh*scale)/2;
+                        img.style.visibility = 'visible';
+                        apply();
+                    }}
+
+                    function zoom(factor){{
+                        scale*=factor;
+                        scale=Math.max(baseScale*0.9, Math.min(scale, baseScale*8));
+                        apply();
+                    }}
+
+                    if(img.complete && img.naturalWidth){{ fitToView(); }}
+                    img.addEventListener('load', fitToView);
+
+                    document.getElementById('carto-zoom-in').addEventListener('click', function(){{ zoom(1.25); }});
+                    document.getElementById('carto-zoom-out').addEventListener('click', function(){{ zoom(0.8); }});
+                    document.getElementById('carto-reset').addEventListener('click', fitToView);
+                    img.addEventListener('wheel', function(e){{
+                        e.preventDefault();
+                        zoom(e.deltaY<0 ? 1.1 : 0.9);
+                    }}, {{passive:false}});
+                    img.addEventListener('mousedown', function(e){{ isDragging=true; startX=e.clientX-posX; startY=e.clientY-posY; img.style.cursor='grabbing'; }});
+                    window.addEventListener('mouseup', function(){{ isDragging=false; img.style.cursor='grab'; }});
+                    window.addEventListener('mousemove', function(e){{ if(!isDragging) return; posX=e.clientX-startX; posY=e.clientY-startY; apply(); }});
+                }})();
+                </script>
+                """, height=630, scrolling=False)
+            else:
+                st.warning("⚠️ Fichier « Cartographie.png » introuvable. Placez-le dans le même dossier que l'application (à côté de app.py) pour l'afficher ici.")
+                st.markdown(f"[🔗 Consulter la cartographie sur Lucid]({LUCID_CARTOGRAPHIE_URL})")
+
+            st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
+
+            # ================= POINTS DE RÉSERVE =================
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📌 Points de réserve</p>",unsafe_allow_html=True)
+
+            with st.spinner("Chargement des points de réserve..."):
+                df_reserve = lire_points_reserve()
+
+            with st.expander("➕ Ajouter un point de réserve"):
+                r1,r2,r3,r4 = st.columns([1,1.5,1.5,1])
+                with r1:
+                    res_site = st.selectbox("Site",["SGB","MEG"],key="res_site_new")
+                with r2:
+                    res_cat = st.selectbox("Catégorie",list(PERIODICITE.keys()),key="res_cat_new")
+                with r3:
+                    res_seq = st.text_input("Sous-équipement",key="res_seq_new")
+                with r4:
+                    res_nb = st.number_input("Nb points",min_value=1,value=1,key="res_nb_new")
+                if st.button("💾 Enregistrer",key="btn_add_reserve"):
+                    if res_seq.strip():
+                        ok,err = ajouter_point_reserve(res_site,res_cat,res_seq.strip(),res_nb)
+                        if ok:
+                            st.success("✅ Point de réserve ajouté !")
+                            st.cache_data.clear()
+                            st.rerun()
+                        else:
+                            st.error(f"Erreur : {err}")
+                    else:
+                        st.warning("Veuillez saisir un sous-équipement.")
+
+            if df_reserve.empty:
+                st.info("Aucun point de réserve enregistré. Utilisez le formulaire ci-dessus pour en ajouter.")
+            else:
+                if "Nombre" in df_reserve.columns:
+                    df_reserve["Nombre"] = pd.to_numeric(df_reserve["Nombre"],errors="coerce").fillna(0).astype(int)
+
+                with st.container(border=True):
+                    st.markdown("<p style='font-weight:600;color:#1E293B;margin:0 0 10px 0;font-size:13px;'>🔍 Filtrer les points de réserve</p>",unsafe_allow_html=True)
+                    fr1,fr2,fr3 = st.columns(3)
+                    sites_dispo = ["Tous"]+sorted(df_reserve["Site"].dropna().unique().tolist()) if "Site" in df_reserve.columns else ["Tous"]
+                    cats_dispo  = ["Tous"]+sorted(df_reserve["Categorie"].dropna().unique().tolist()) if "Categorie" in df_reserve.columns else ["Tous"]
+                    with fr1: f_res_site = st.selectbox("Site",sites_dispo,key="f_res_site")
+                    with fr2: f_res_cat  = st.selectbox("Catégorie",cats_dispo,key="f_res_cat")
+                    with fr3: f_res_seq  = st.text_input("Recherche sous-équipement",key="f_res_seq")
+
+                df_reserve_f = df_reserve.copy()
+                if f_res_site!="Tous" and "Site" in df_reserve_f.columns:
+                    df_reserve_f = df_reserve_f[df_reserve_f["Site"]==f_res_site]
+                if f_res_cat!="Tous" and "Categorie" in df_reserve_f.columns:
+                    df_reserve_f = df_reserve_f[df_reserve_f["Categorie"]==f_res_cat]
+                if f_res_seq.strip() and "Sous_equipement" in df_reserve_f.columns:
+                    df_reserve_f = df_reserve_f[df_reserve_f["Sous_equipement"].astype(str).str.contains(f_res_seq.strip(),case=False,na=False)]
+
+                st.dataframe(df_reserve_f.rename(columns={
+                    "Site":"Site","Categorie":"Catégorie","Sous_equipement":"Sous équipement","Nombre":"Nbre points de réserve"
+                }),hide_index=True,use_container_width=True)
+
+                st.markdown("<br>",unsafe_allow_html=True)
+                gr1,gr2 = st.columns(2)
+                with gr1:
+                    if "Site" in df_reserve_f.columns and not df_reserve_f.empty:
+                        df_by_site = df_reserve_f.groupby("Site")["Nombre"].sum().reset_index()
+                        figS = px.pie(df_by_site,values="Nombre",names="Site",hole=0.6,
+                                      color_discrete_sequence=['#1E3A8A','#0EA5E9','#94A3B8'])
+                        figS.update_traces(textposition='inside',textinfo='percent+label')
+                        figS.update_layout(title="Répartition par site",margin=dict(t=40,b=10,l=10,r=10),height=280,
+                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(figS,use_container_width=True,config={'displayModeBar':False})
+                    else:
+                        st.info("Aucune donnée à afficher pour le graphe par site.")
+                with gr2:
+                    if "Categorie" in df_reserve_f.columns and not df_reserve_f.empty:
+                        df_by_cat = df_reserve_f.groupby("Categorie")["Nombre"].sum().reset_index()
+                        figC = px.pie(df_by_cat,values="Nombre",names="Categorie",hole=0.6,
+                                      color_discrete_sequence=px.colors.qualitative.Set2)
+                        figC.update_traces(textposition='inside',textinfo='percent+label')
+                        figC.update_layout(title="Répartition par catégorie",margin=dict(t=40,b=10,l=10,r=10),height=280,
+                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(figC,use_container_width=True,config={'displayModeBar':False})
+                    else:
+                        st.info("Aucune donnée à afficher pour le graphe par catégorie.")
+
+                with st.expander("🗑️ Supprimer un point de réserve"):
+                    for orig_idx,row_r in df_reserve.iterrows():
+                        dcx1,dcx2 = st.columns([5,1])
+                        with dcx1:
+                            st.write(f"{row_r.get('Site','')} — {row_r.get('Categorie','')} — {row_r.get('Sous_equipement','')} — {row_r.get('Nombre',0)} pt(s)")
+                        with dcx2:
+                            if st.button("🗑️",key=f"del_res_{orig_idx}"):
+                                num_ligne_sheet = orig_idx+2
+                                if supprimer_ligne_generique("PointsReserve",num_ligne_sheet,4):
+                                    st.success("Supprimé !")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                else:
+                                    st.error("Erreur lors de la suppression.")
+
+            # ================= RAPPORT PDF PREMIUM =================
+            st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📄 Rapport PDF Premium</p>",unsafe_allow_html=True)
+            st.markdown("<p style='font-size:13px;color:#64748B;margin-bottom:14px;'>Génère un rapport PDF complet reprenant l'ensemble des indicateurs de cet onglet (taux de réalisation, taux planifié, respect des délais, cartographie de non-conformité et points de réserve), avec le logo TPR en en-tête.</p>",unsafe_allow_html=True)
+
+            if kpi_data is None:
+                st.info("Le rapport PDF nécessite des données KPI disponibles (onglet « Rapports » non vide).")
+            else:
+                with st.spinner("Préparation du rapport PDF Premium..."):
+                    try:
+                        pdf_kpi = generer_rapport_kpi_pdf(
+                            kpi_data,
+                            df_reserve,
+                            carto_b64,
+                            "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s"
+                        )
+                        st.download_button(
+                            label="📄 Télécharger le rapport PDF Premium",
+                            data=pdf_kpi,
+                            file_name=f"Rapport_KPI_{datetime.date.today().strftime('%d_%m_%Y')}.pdf",
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        st.error(f"Erreur lors de la génération du PDF : {e}")
