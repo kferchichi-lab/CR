@@ -837,7 +837,7 @@ if acces_autorise:
         col_cat =[c for c in df_f.columns if "cat" in c.lower()]
         col_seq =[c for c in df_f.columns if "sous" in c.lower()]
         col_lien=[c for c in df_f.columns if "lien" in c.lower() or "pdf" in c.lower()]
-        
+        col_date=[c for c in df_f.columns if "date" in c.lower() or "contr" in c.lower()]
         if not df_f.empty:
             if f_site !="Tous" and col_site: df_f=df_f[df_f[col_site[0]].astype(str).str.strip()==f_site]
             if f_annee!="Tous" and col_ex:   df_f=df_f[pd.to_numeric(df_f[col_ex[0]],errors='coerce')==int(f_annee)]
@@ -845,6 +845,7 @@ if acces_autorise:
             if f_sous_eq!="Tous" and col_seq:df_f=df_f[df_f[col_seq[0]].astype(str).str.strip()==f_sous_eq]
             if col_lien: df_f[col_lien[0]]=df_f[col_lien[0]].apply(convertir_lien)
             if col_date: df_f[col_date[0]]=pd.to_datetime(df_f[col_date[0]],dayfirst=True,errors='coerce')
+            
         if not df_f.empty:
             st.dataframe(df_f,column_config={
                 (col_lien[0] if col_lien else "Lien PDF"):st.column_config.LinkColumn("Action",display_text="Voir le rapport"),
