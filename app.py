@@ -28,7 +28,7 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
     
     # 2. Filtrer selon le Site (Colonne index 1)
     df_eq = df_eq[df_eq.iloc[:, 1].astype(str).str.strip().str.upper() == site_filtre.upper()]
-    logo_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s"
+
     html_content = f"""
     <html>
     <head>
@@ -65,24 +65,6 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
             text-transform: uppercase;
             border-bottom: 2px solid #1E3A8A;
             padding-bottom: 10px;
-        }}
-        .page-header {{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 16px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #E2E8F0;
-        }}
-        .page-header img {{
-            height: 36px;
-        }}
-        .page-header-text {{
-            font-size: 9.5pt;
-            color: #64748B;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
         }}
         .meta-info {{
             margin-bottom: 25px;
@@ -154,10 +136,6 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
         
         html_content += f"""
         <div class="page">
-            <div class="page-header">
-                <img src="{logo_url}"/>
-                <div class="page-header-text">Tunisie Profilés d'Aluminium — Direction Maintenance &amp; TN</div>
-            </div>
             <div class="header-title">Rapport d'Inspection Réglementaire — Site {site_filtre.upper()}</div>
             
             <div class="meta-info">
@@ -831,7 +809,8 @@ if acces_autorise:
     def convertir_lien(url):
         try:
             if "drive.google.com" in str(url) and "/file/d/" in str(url):
-                return f"https://drive.google.com/uc?export=download&id={str(url).split('/file/d/')[1].split('/')[0]}"
+                file_id = str(url).split('/file/d/')[1].split('/')[0]
+                return f"https://drive.google.com/file/d/{file_id}/preview"
         except Exception: pass
         return url
 
@@ -868,7 +847,7 @@ if acces_autorise:
             if col_date: df_f[col_date[0]]=pd.to_datetime(df_f[col_date[0]],dayfirst=True,errors='coerce')
         if not df_f.empty:
             st.dataframe(df_f,column_config={
-                (col_lien[0] if col_lien else "Lien PDF"):st.column_config.LinkColumn("Action",display_text="📥 Télécharger PDF"),
+                (col_lien[0] if col_lien else "Lien PDF"):st.column_config.LinkColumn("Action",display_text="Voir le rapport"),
                 (col_ex[0]   if col_ex   else "Exercice"):st.column_config.NumberColumn("Exercice",format="%d"),
                 (col_date[0] if col_date else "Date"):    st.column_config.DateColumn("Date de dernier contrôle",format="DD/MM/YYYY"),
             },hide_index=True,use_container_width=True)
