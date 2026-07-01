@@ -845,8 +845,9 @@ if acces_autorise:
             if f_sous_eq!="Tous" and col_seq:df_f=df_f[df_f[col_seq[0]].astype(str).str.strip()==f_sous_eq]
             if col_lien: df_f[col_lien[0]]=df_f[col_lien[0]].apply(convertir_lien)
             if col_date: df_f[col_date[0]]=pd.to_datetime(df_f[col_date[0]],dayfirst=True,errors='coerce')
-            
         if not df_f.empty:
+            col_reelle_doc=[c for c in df_f.columns if "reelle" in c.lower() or "réelle" in c.lower()]
+            if col_reelle_doc: df_f=df_f.drop(columns=col_reelle_doc)
             st.dataframe(df_f,column_config={
                 (col_lien[0] if col_lien else "Lien PDF"):st.column_config.LinkColumn("Action",display_text="Voir le rapport"),
                 (col_ex[0]   if col_ex   else "Exercice"):st.column_config.NumberColumn("Exercice",format="%d"),
