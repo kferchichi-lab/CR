@@ -1423,7 +1423,7 @@ if acces_autorise:
             date_str = datetime.date.today().strftime('%d_%m_%Y')
 
             with col_sgb:
-                if st.button("👁️ Consulter le rapport — SGB", use_container_width=True, key="consult_sgb"):
+                if st.button("Consulter le rapport — SGB", use_container_width=True, key="consult_sgb"):
                     with st.spinner("Préparation du rapport SGB..."):
                         try:
                             st.session_state["pdf_sgb"] = generer_rapport_equipements_pdf(df_exig, "SGB")
@@ -1442,7 +1442,7 @@ if acces_autorise:
                     )
 
             with col_meg:
-                if st.button("👁️ Consulter le rapport — MEG", use_container_width=True, key="consult_meg"):
+                if st.button("Consulter le rapport — MEG", use_container_width=True, key="consult_meg"):
                     with st.spinner("Préparation du rapport MEG..."):
                         try:
                             st.session_state["pdf_meg"] = generer_rapport_equipements_pdf(df_exig, "MEG")
