@@ -12,14 +12,14 @@ import base64
 from weasyprint import HTML
 
 def afficher_apercu_pdf(pdf_bytes, hauteur=800):
-    """Aperçu du PDF"""
+    """Affiche un aperçu du PDF directement dans la page (sans le télécharger)."""
     b64 = base64.b64encode(pdf_bytes).decode("utf-8")
-    components.html(
+    st.markdown(
         f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="{hauteur}" '
         f'style="border:1px solid #E2E8F0;border-radius:8px;" type="application/pdf"></iframe>',
-        height=hauteur + 10,
+        unsafe_allow_html=True,
     )
-
+    
 def generer_rapport_equipements_pdf(df_exigences, site_filtre):
     """
     Génère un rapport PDF de 5 pages pour un site spécifique (SGB ou MEG).
