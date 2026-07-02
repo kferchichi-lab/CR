@@ -210,7 +210,7 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
         else:
             html_content += """
                 <tr>
-                    <td colspan="3" style="text-align:center; color:#94A3B8; font-style: italic;">Aucun équipement enregistré pour cette catégorie sur ce site</td>
+                    <td colspan="3" style="text-align:center; color:#94A3B8; font-style: italic;">Aucun équipement enregistré pour cette instalaltion sur ce site</td>
                 </tr>
             """
             
@@ -278,7 +278,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
         <div class="page">
             <div class="category-title">🗺️ Taux de non-conformité des sites</div>
             <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
-            Cartographie de synthèse du taux de non-conformité par site et par catégorie d'équipement,
+            Cartographie de synthèse du taux de non-conformité par site et par installation,
             établie lors de la campagne de contrôle réglementaire 2026.</p>
             <img src="data:image/png;base64,{carto_b64}" style="width:100%;border-radius:8px;border:1px solid #E2E8F0;"/>
         </div>"""
@@ -348,11 +348,11 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
     {carto_html}
 
     <div class="page">
-        <div class="category-title">📌 Points de réserve</div>
+        <div class="category-title">📌 Actions de contrôle</div>
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
-        Liste consolidée des points de réserve relevés par site, catégorie et sous-équipement.</p>
+        Liste consolidée des points de réserve relevés par site, installation et sous-équipement.</p>
         <table>
-            <thead><tr><th>Site</th><th>Catégorie</th><th>Sous équipement</th><th>Nbre points</th></tr></thead>
+            <thead><tr><th>Site</th><th>Installation</th><th>Sous équipement</th><th>Nbre points</th></tr></thead>
             <tbody>{html_reserve_rows}</tbody>
         </table>
 
@@ -362,7 +362,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
                 {site_rows if site_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
             <div style="flex:1;">
-                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par catégorie</p>
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par installation</p>
                 {cat_rows if cat_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
         </div>
@@ -916,7 +916,7 @@ if acces_autorise:
             st.markdown("<p style='font-weight:600;color:#1E293B;margin:0 0 10px 0;font-size:13px;'>🔍 Filtrer les échéances</p>",unsafe_allow_html=True)
             fc1,fc2,fc3=st.columns(3)
             with fc1: f_ech_site=st.selectbox("Site",["Tous","SGB","MEG"],key="f_ech_site")
-            with fc2: f_ech_cat =st.selectbox("Catégorie",["Tous"]+list(PERIODICITE.keys()),key="f_ech_cat")
+            with fc2: f_ech_cat =st.selectbox("Installation",["Tous"]+list(PERIODICITE.keys()),key="f_ech_cat")
             with fc3:
                 opts_seq=["Tous"]+SOUS_EQUIPEMENTS.get(f_ech_cat,[]) if f_ech_cat!="Tous" else ["Tous"]+[i for sub in SOUS_EQUIPEMENTS.values() for i in sub]
                 f_ech_seq=st.selectbox("Sous-équipement",opts_seq,key="f_ech_seq")
@@ -1311,7 +1311,7 @@ if acces_autorise:
     # On se base TOUJOURS sur le session_state actuel, pas sur le clic du bouton direct
         if st.session_state.site_exig_sel:
             site_sel = st.session_state.site_exig_sel
-            st.markdown(f"<p style='font-size:13px;color:#64748B;font-weight:600;margin:16px 0 8px 0;'>Catégories — Site {site_sel} :</p>", unsafe_allow_html=True)
+            st.markdown(f"<p style='font-size:13px;color:#64748B;font-weight:600;margin:16px 0 8px 0;'>Installations — Site {site_sel} :</p>", unsafe_allow_html=True)
 
             df_site = df_equip[df_equip["Site"] == site_sel] if not df_equip.empty else pd.DataFrame()
 
@@ -1397,7 +1397,7 @@ if acces_autorise:
                                         else:
                                             st.error("Erreur lors de la suppression.")
         else:
-            st.info("👆 Sélectionnez un site (SGB ou MEG) pour voir les catégories d'équipements.")
+            st.info("👆 Sélectionnez un site (SGB ou MEG) pour voir les installations")
 
         st.divider()
 
@@ -1683,7 +1683,7 @@ if acces_autorise:
                 with r1:
                     res_site = st.selectbox("Site",["SGB","MEG"],key="res_site_new")
                 with r2:
-                    res_cat = st.selectbox("Catégorie",list(PERIODICITE.keys()),key="res_cat_new")
+                    res_cat = st.selectbox("Installation",list(PERIODICITE.keys()),key="res_cat_new")
                 with r3:
                     res_seq = st.text_input("Sous-équipement",key="res_seq_new")
                 with r4:
@@ -1712,7 +1712,7 @@ if acces_autorise:
                     sites_dispo = ["Tous"]+sorted(df_reserve["Site"].dropna().unique().tolist()) if "Site" in df_reserve.columns else ["Tous"]
                     cats_dispo  = ["Tous"]+sorted(df_reserve["Categorie"].dropna().unique().tolist()) if "Categorie" in df_reserve.columns else ["Tous"]
                     with fr1: f_res_site = st.selectbox("Site",sites_dispo,key="f_res_site")
-                    with fr2: f_res_cat  = st.selectbox("Catégorie",cats_dispo,key="f_res_cat")
+                    with fr2: f_res_cat  = st.selectbox("Installation",cats_dispo,key="f_res_cat")
                     with fr3: f_res_seq  = st.text_input("Recherche sous-équipement",key="f_res_seq")
 
                 df_reserve_f = df_reserve.copy()
@@ -1724,7 +1724,7 @@ if acces_autorise:
                     df_reserve_f = df_reserve_f[df_reserve_f["Sous_equipement"].astype(str).str.contains(f_res_seq.strip(),case=False,na=False)]
 
                 st.dataframe(df_reserve_f.rename(columns={
-                    "Site":"Site","Categorie":"Catégorie","Sous_equipement":"Sous équipement","Nombre":"Nbre points de réserve"
+                    "Site":"Site","Categorie":"Installation","Sous_equipement":"Sous équipement","Nombre":"Nbre points de réserve"
                 }),hide_index=True,use_container_width=True)
 
                 st.markdown("<br>",unsafe_allow_html=True)
@@ -1744,7 +1744,7 @@ if acces_autorise:
                         st.info("Aucune donnée à afficher pour le graphe par site.")
 
                 st.markdown("<br>",unsafe_allow_html=True)
-                st.markdown("<p style='font-weight:700;font-size:14px;color:#0F172A;text-align:center;margin-bottom:10px;'>Répartition par catégorie</p>",unsafe_allow_html=True)
+                st.markdown("<p style='font-weight:700;font-size:14px;color:#0F172A;text-align:center;margin-bottom:10px;'>Répartition par installation</p>",unsafe_allow_html=True)
 
                 # --- Répartition par catégorie : MEG (gauche) | légende (milieu) | SGB (droite) ---
                 if "Categorie" in df_reserve_f.columns and "Site" in df_reserve_f.columns and not df_reserve_f.empty:
@@ -1791,7 +1791,7 @@ if acces_autorise:
                         else:
                             st.info("Aucune donnée SGB.")
                 else:
-                    st.info("Aucune donnée à afficher pour le graphe par catégorie.")
+                    st.info("Aucune donnée à afficher pour le graphe par installation.")
 
                 with st.expander("🗑️ Supprimer un point de réserve"):
                     for orig_idx,row_r in df_reserve.iterrows():
