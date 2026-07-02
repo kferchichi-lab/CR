@@ -904,7 +904,7 @@ if acces_autorise:
         else:
             st.warning("Aucun rapport ne correspond aux critères sélectionnés.")
 
-        st.markdown("<br><hr style='border-color:#E2E8F0;'><p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📊 Analyses globales</p>",unsafe_allow_html=True)
+        st.markdown("<br><hr style='border-color:#E2E8F0;'><p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📊 Analyse globale</p>",unsafe_allow_html=True)
         if not df_rapports.empty:
             col_sc=[c for c in df_rapports.columns if "site" in c.lower()]
             col_cc=[c for c in df_rapports.columns if "cat" in c.lower()]
