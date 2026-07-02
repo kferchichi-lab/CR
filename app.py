@@ -244,7 +244,7 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
 def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
     """
     Génère un rapport PDF premium regroupant tous les KPI de l'onglet KPI :
-    Taux de réalisation 2026, Taux planifié, Taux de respect de délai,
+    Taux de réalisation 2026, Taux de respect de délai,
     cartographie du taux de non-conformité, et points de réserve.
     """
     date_str = datetime.date.today().strftime('%d/%m/%Y')
@@ -340,17 +340,6 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
             {barre(k1['taux'], '#10B981')}
             <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k1['realises']} réalisés / {k1['restants']} restants
             — sur {k1['total']} contrôle(s) dû(s) en 2026</p>
-        </div>
-
-        <div class="kpi-card" style="border-left-color:#1E3A8A;">
-            <p class="kpi-title">2. Taux planifié</p>
-            <p class="kpi-desc">Part des contrôles pour lesquels une date réelle de visite a été effectivement
-            saisie, par rapport à ceux pour lesquels le système utilise encore la date de la dernière visite
-            connue comme estimation de planification.</p>
-            <p class="kpi-value">{k2['taux']}%</p>
-            {barre(k2['taux'], '#1E3A8A')}
-            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['avec_reelle']} avec date réelle / {k2['estimes']} estimé(s)
-            — sur {k2['total']} contrôle(s) au total</p>
         </div>
 
         <div class="kpi-card" style="border-left-color:#0EA5E9;">
@@ -1567,12 +1556,6 @@ if acces_autorise:
                 nb_restants_2026 = nb_total_2026 - nb_realises_2026
                 taux1 = round(nb_realises_2026/nb_total_2026*100,1) if nb_total_2026>0 else 0
 
-                # ---- KPI 2 : Taux planifié — dates réelles saisies vs estimées via la dernière visite ----
-                nb_total_all   = len(df_k)
-                nb_avec_reelle = int(df_k["_date_reelle"].notna().sum())
-                nb_estimes     = nb_total_all - nb_avec_reelle
-                taux2 = round(nb_avec_reelle/nb_total_all*100,1) if nb_total_all>0 else 0
-
                 # ---- KPI 3 : Taux de respect de délai de visite (écart ≤ 3j vs échéance théorique initiale) ----
                 df_realises_k = df_k[df_k["_date_reelle"].notna()].copy()
                 nb_visites_realisees = len(df_realises_k)
@@ -1605,20 +1588,6 @@ if acces_autorise:
                         st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% réalisés ({nb_realises_2026}/{nb_total_2026})</p>",unsafe_allow_html=True)
                     else:
                         st.info("Aucun contrôle avec échéance théorique en 2026.")
-
-                with k2c:
-                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Taux planifié</p>",unsafe_allow_html=True)
-                    if nb_total_all>0:
-                        dfp2=pd.DataFrame({"Statut":["Date réelle saisie","Estimée (dernière visite)"],"Nombre":[nb_avec_reelle,nb_estimes]})
-                        fig2=px.pie(dfp2,values="Nombre",names="Statut",hole=0.6,color="Statut",
-                                    color_discrete_map={"Date réelle saisie":"#1E3A8A","Estimée (dernière visite)":"#F59E0B"})
-                        fig2.update_traces(textposition='inside',textinfo='percent+label')
-                        fig2.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
-                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
-                        st.plotly_chart(fig2,use_container_width=True,config={'displayModeBar':False})
-                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% avec date réelle ({nb_avec_reelle}/{nb_total_all})</p>",unsafe_allow_html=True)
-                    else:
-                        st.info("Aucune donnée disponible.")
 
                 with k3c:
                     st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤ 1 mois)</p>",unsafe_allow_html=True)
