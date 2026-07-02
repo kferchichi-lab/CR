@@ -245,7 +245,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
         return f"""<div style="background:#E2E8F0;border-radius:6px;height:14px;width:100%;overflow:hidden;">
             <div style="background:{couleur};height:100%;width:{pct}%;"></div></div>"""
 
-    k1 = kpi_data["kpi1"]; k2 = kpi_data["kpi2"]
+    k1 = kpi_data["kpi1"]; k2 = kpi_data["kpi2"]; k3 = kpi_data["kpi3"]
 
     html_reserve_rows = ""
     if df_reserve is not None and not df_reserve.empty:
@@ -334,14 +334,14 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
         </div>
 
         <div class="kpi-card" style="border-left-color:#0EA5E9;">
-            <p class="kpi-title">2. Taux de respect de délai de visite</p>
-            <p class="kpi-desc">Proportion des visites réalisées (parmi les contrôles dus en 2026) dont l'écart entre
-            la date réelle de contrôle et l'échéance théorique initiale du cycle n'excède pas 3 jours, par rapport
-            au nombre total de visites réalisées.</p>
-            <p class="kpi-value">{k2['taux']}%</p>
-            {barre(k2['taux'], '#0EA5E9')}
-            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['respectes']} respecté(s) / {k2['non_respectes']} non respecté(s)
-            — sur {k2['total']} visite(s) réalisée(s)</p>
+            <p class="kpi-title">3. Taux de respect de délai de visite</p>
+            <p class="kpi-desc">Proportion des visites réalisées dont l'écart entre la date réelle de contrôle
+            et l'échéance théorique initiale du cycle n'excède pas 3 jours, par rapport au nombre total
+            de visites réalisées.</p>
+            <p class="kpi-value">{k3['taux']}%</p>
+            {barre(k3['taux'], '#0EA5E9')}
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k3['respectes']} respecté(s) / {k3['non_respectes']} non respecté(s)
+            — sur {k3['total']} visite(s) réalisée(s)</p>
         </div>
     </div>
 
@@ -1550,8 +1550,7 @@ if acces_autorise:
 
 
                 # ---- KPI 2 : Taux de respect de délai de visite (écart ≤ 3j vs échéance théorique initiale) ----
-                # Même périmètre que le KPI 1 : uniquement les contrôles dus en 2026
-                df_realises_k = df_2026[df_2026["_date_reelle"].notna()].copy()
+                df_realises_k = df_k[df_k["_date_reelle"].notna()].copy()
                 nb_visites_realisees = len(df_realises_k)
                 if nb_visites_realisees > 0:
                     df_realises_k["_ecart"] = (df_realises_k["_date_reelle"] - df_realises_k["_date_brute"]).dt.days.abs()
@@ -1575,31 +1574,31 @@ if acces_autorise:
 
                 with k1c:
                     st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Taux de réalisation 2026</p></p>",unsafe_allow_html=True)
-                    if nb_total_2026>0:
-                        dfp1=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_realises_2026,nb_restants_2026]})
-                        fig1=px.pie(dfp1,values="Nombre",names="Statut",hole=0.6,color="Statut",
-                                    color_discrete_map={"Réalisés":"#10B981","Restants":"#EF4444"})
-                        fig1.update_traces(textposition='inside',textinfo='percent')
-                        fig1.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
-                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
-                        st.plotly_chart(fig1,use_container_width=True,config={'displayModeBar':False})
-                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% réalisés ({nb_realises_2026}/{nb_total_2026})</p>",unsafe_allow_html=True)
-                    else:
-                        st.info("Aucun contrôle avec échéance théorique en 2026.")
-
-                with k2c:
-                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤ 1 mois)</p>",unsafe_allow_html=True)
                     if nb_visites_realisees>0:
-                        dfp2=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_respectes,nb_non_respectes]})
+                        dfp2=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_respectes,nb_non_respectes]})
                         fig2=px.pie(dfp2,values="Nombre",names="Statut",hole=0.6,color="Statut",
-                                    color_discrete_map={"Respecté":"#0EA5E9","Non respecté":"#EF4444"})
+                                    color_discrete_map={"Réalisés":"#10B981","Restants":"#EF4444"})
                         fig2.update_traces(textposition='inside',textinfo='percent')
                         fig2.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig2,use_container_width=True,config={'displayModeBar':False})
-                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% respectés ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% réalisés ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
                     else:
                         st.info("Aucune visite réalisée à ce jour.")
+
+                with k2c:
+                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤ 1 mois)</p>",unsafe_allow_html=True)
+                    if nb_total_2026>0:
+                        dfp1=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_realises_2026,nb_restants_2026]})
+                        fig1=px.pie(dfp1,values="Nombre",names="Statut",hole=0.6,color="Statut",
+                                    color_discrete_map={"Respecté":"#0EA5E9","Non respecté":"#EF4444"})
+                        fig1.update_traces(textposition='inside',textinfo='percent')
+                        fig1.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
+                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig1,use_container_width=True,config={'displayModeBar':False})
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% respectés ({nb_realises_2026}/{nb_total_2026})</p>",unsafe_allow_html=True)
+                    else:
+                        st.info("Aucun contrôle avec échéance théorique en 2026.")
 
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
 
