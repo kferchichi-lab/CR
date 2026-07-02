@@ -816,7 +816,7 @@ if acces_autorise and email_actif:
 st.markdown("""<style>.stMarkdown div p,.stMarkdown div h1{text-align:center!important;}</style>""",unsafe_allow_html=True)
 st.markdown("""<div style="width:100%;text-align:center;margin:10px auto 35px auto;">
     <h1 style="text-align:center;font-size:2.6rem;font-weight:800;color:#0F172A;margin:0 0 6px 0;letter-spacing:-1px;line-height:1.2;">Tableau de Bord Réglementaire</h1>
-    <p style="text-align:center;font-size:1.05rem;color:#64748B;margin:0 auto;font-weight:400;line-height:1.5;max-width:800px;">Suivi de conformité en temps réel — Synchronisé avec Direction Maintenance</p>
+    <p style="text-align:center;font-size:1.05rem;color:#64748B;margin:0 auto;font-weight:400;line-height:1.5;max-width:800px;">L'amélioration continue.. Notre trajectoire..</p>
 </div>""",unsafe_allow_html=True)
 
 # ==========================================
