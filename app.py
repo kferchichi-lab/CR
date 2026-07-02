@@ -331,7 +331,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
             par rapport au nombre total de contrôles dus sur cette période.</p>
             <p class="kpi-value">{k2['taux']}%</p>
             {barre(k2['taux'], '#0EA5E9')}
-            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['respectes']} réalisé(s) / {k2['non_respectes']} non réalisé(s)
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['respectes']} réalisé(s) / {k2['respectes']} non réalisé(s)
             — sur {k2['total']} visite(s) planifiée(s)</p>
         </div>
 
