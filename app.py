@@ -175,7 +175,7 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
                 <img src="{logo_url}"/>
                 <div class="page-header-text">Tunisie Profilés d'Aluminium — Direction Maintenance &amp; TN</div>
             </div>
-            <div class="header-title">Rapport d'Inspection Réglementaire</div>
+            <div class="header-title" style="border-bottom: none; padding-bottom: 0;">Rapport d'Inspection Réglementaire</div>
             <div class="header-title">Site {site_filtre.upper()}</div>
             
             <div class="meta-info">
@@ -319,7 +319,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
         <div class="meta-info">
             <b>Date d'édition :</b> {date_str}<br>
             <b>Objet :</b> Synthèse des indicateurs de performance du suivi de conformité réglementaire —
-            taux de réalisation, planification, respect des délais, non-conformités et points de réserve.
+            taux de réalisation, respect des délais, non-conformités et actions de contrôle.
         </div>
 
         <div class="category-title">📊 Indicateurs de performance</div>
