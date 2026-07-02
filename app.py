@@ -1678,7 +1678,7 @@ if acces_autorise:
             with st.spinner("Chargement des points de réserve..."):
                 df_reserve = lire_points_reserve()
 
-            with st.expander("➕ Ajouter un point de réserve"):
+            with st.expander("➕ Ajouter une action"):
                 r1,r2,r3,r4 = st.columns([1,1.5,1.5,1])
                 with r1:
                     res_site = st.selectbox("Site",["SGB","MEG"],key="res_site_new")
