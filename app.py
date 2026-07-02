@@ -1768,15 +1768,14 @@ if acces_autorise:
                             st.info("Aucune donnée MEG.")
 
                     with gcat2:
-                        legende_html = "<div style='padding-top:35px;'>"
-                        for cat in all_cats:
-                            legende_html += f"""
-                                <div style='display:flex;align-items:center;gap:8px;margin-bottom:12px;'>
-                                    <span style='width:12px;height:12px;min-width:12px;border-radius:3px;background:{color_map[cat]};display:inline-block;'></span>
-                                    <span style='font-size:11.5px;color:#334155;'>{cat}</span>
-                                </div>
-                            """
-                        legende_html += "</div>"
+                        legende_items = "".join(
+                            f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:12px;'>"
+                            f"<span style='width:12px;height:12px;min-width:12px;border-radius:3px;background:{color_map[cat]};display:inline-block;'></span>"
+                            f"<span style='font-size:11.5px;color:#334155;'>{cat}</span>"
+                            f"</div>"
+                            for cat in all_cats
+                        )
+                        legende_html = f"<div style='padding-top:35px;'>{legende_items}</div>"
                         st.markdown(legende_html,unsafe_allow_html=True)
 
                     with gcat3:
