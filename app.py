@@ -1749,7 +1749,7 @@ if acces_autorise:
                 # --- Répartition par catégorie : MEG (gauche) | légende (milieu) | SGB (droite) ---
                 if "Categorie" in df_reserve_f.columns and "Site" in df_reserve_f.columns and not df_reserve_f.empty:
                     all_cats = sorted(df_reserve_f["Categorie"].dropna().unique().tolist())
-                    palette = px.colors.qualitative.Pastel
+                    palette = px.colors.qualitative.Set1
                     color_map = {cat: palette[i % len(palette)] for i,cat in enumerate(all_cats)}
 
                     gcat1,gcat2,gcat3 = st.columns([2,1,2])
