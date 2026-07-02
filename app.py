@@ -929,18 +929,6 @@ if acces_autorise:
 
     # ---- ONGLET 2 : PLANNING ----
     with tab2:
-        st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📅 Planification des contrôles obligatoires</p>",unsafe_allow_html=True)
-        if not df_planning.empty:
-            col_p=[c for c in df_planning.columns if "prochain" in c.lower() or "échéan" in c.lower()]
-            st.dataframe(df_planning,
-                column_config={(col_p[0] if col_p else "Prochain contrôle"):st.column_config.DateColumn("Échéance",format="DD/MM/YYYY")},
-                hide_index=True,use_container_width=True)
-        else:
-            st.info("Aucun contrôle planifié.")
-        if role=="Responsable" and password_correct:
-            with st.expander("🛠️ Panneau d'administration"):
-                st.markdown(f"[Modifier le calendrier]({URL_GOOGLE_SHEET})")
-
         st.markdown("<br><p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📅 Prochaines échéances calculées</p>",unsafe_allow_html=True)
 
         # ---- FILTRES ÉCHÉANCES ----
