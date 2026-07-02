@@ -175,7 +175,8 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
                 <img src="{logo_url}"/>
                 <div class="page-header-text">Tunisie Profilés d'Aluminium — Direction Maintenance &amp; TN</div>
             </div>
-            <div class="header-title">Rapport d'Inspection Réglementaire — Site {site_filtre.upper()}</div>
+            <div class="header-title">Rapport d'Inspection Réglementaire</div>
+            <div class="header-title">Site {site_filtre.upper()}</div>
             
             <div class="meta-info">
                 <strong>Inspecteur technique :</strong> ............................................................<br>
@@ -312,7 +313,8 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
 
     <div class="page">
         <div class="logo-box"><img src="{logo_url}"/></div>
-        <div class="header-title">Rapport KPI — Contrôle Réglementaire</div>
+        <div class="header-title">Rapport KPI</div>
+        <div class="header-title">Contrôle Réglementaire</div>
         <div class="header-sub">Tunisie Profilés d'Aluminium — Direction Maintenance &amp; TN</div>
         <div class="meta-info">
             <b>Date d'édition :</b> {date_str}<br>
