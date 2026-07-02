@@ -877,7 +877,7 @@ if acces_autorise:
             div[data-testid="stSelectbox"] label p{text-align:center!important;width:100%;display:block;}
         </style>""",unsafe_allow_html=True)
         with st.container(border=True):
-            st.markdown("<p class='filter-title'>Filtres de recherche avancés</p>",unsafe_allow_html=True)
+            st.markdown("<p class='filter-title'>Filtres de recherche</p>",unsafe_allow_html=True)
             c1,c2,c3,c4=st.columns(4)
             with c1: f_site =st.selectbox("Site",["Tous","SGB","MEG"])
             with c2: f_annee=st.selectbox("Année",["Tous","2025","2026"])
