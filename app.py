@@ -1569,7 +1569,7 @@ if acces_autorise:
 
                 kpi_data = {
                     "kpi1": {"taux":taux1, "realises":nb_realises_2026, "restants":nb_restants_2026, "total":nb_total_2026},
-                    "kpi2": {"taux":taux2, "respectes":nb_respectes, "non_respectes":nb_non_respectes, "total":nb_visites_realisees},
+                    "kpi2": {"taux":taux2, "respectes":nb_respectes, "non_respectes":nb_non_respectes, "total":nb_visites_realisees}
                 }
 
                 k1c,k2c = st.columns(2)
