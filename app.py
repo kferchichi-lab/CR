@@ -31,7 +31,7 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
     """
     Génère un rapport PDF de 5 pages pour un site spécifique (SGB ou MEG).
     """
-    categories = [
+    installations = [
         "Installations électriques",
         "Equipements de levage",
         "Sécurité incendie",
@@ -165,8 +165,8 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
     <body>
     """
 
-    for cat in categories:
-        # Filtrer par catégorie parmi les équipements du site
+    for cat in installations:
+        # Filtrer par installation parmi les équipements du site
         df_cat = df_eq[df_eq.iloc[:, 2].astype(str).str.strip() == cat]
         
         html_content += f"""
@@ -250,7 +250,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
     html_reserve_rows = ""
     if df_reserve is not None and not df_reserve.empty:
         for _, r in df_reserve.iterrows():
-            html_reserve_rows += (f"<tr><td>{r.get('Site','')}</td><td>{r.get('Categorie','')}</td>"
+            html_reserve_rows += (f"<tr><td>{r.get('Site','')}</td><td>{r.get('Installation','')}</td>"
                                    f"<td>{r.get('Sous_equipement','')}</td>"
                                    f"<td style='text-align:center;'>{r.get('Nombre',0)}</td></tr>")
     else:
@@ -264,9 +264,9 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
             site_rows += (f"""<div style="margin-bottom:10px;">
                 <div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;">
                 <span>{site}</span><span>{pct}% ({grp})</span></div>{barre(pct,'#1E3A8A')}</div>""")
-    if df_reserve is not None and not df_reserve.empty and "Categorie" in df_reserve.columns:
+    if df_reserve is not None and not df_reserve.empty and "Installation" in df_reserve.columns:
         tot = df_reserve["Nombre"].sum()
-        for cat, grp in df_reserve.groupby("Categorie")["Nombre"].sum().items():
+        for cat, grp in df_reserve.groupby("Installation")["Nombre"].sum().items():
             pct = round(grp/tot*100,1) if tot else 0
             cat_rows += (f"""<div style="margin-bottom:10px;">
                 <div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;">
@@ -662,9 +662,9 @@ def supprimer_contrat():
     return resp.status_code == 200
 
 
-def ajouter_equipement(site, categorie, sous_eq, nombre):
+def ajouter_equipement(site, installation, sous_eq, nombre):
     """Ajoute une ligne équipement dans Exigences."""
-    return sheets_append("Exigences", ["Equipement", site, categorie, sous_eq, str(nombre), ""])
+    return sheets_append("Exigences", ["Equipement", site, installation, sous_eq, str(nombre), ""])
 
 
 def supprimer_equipement_ligne(num_ligne_sheet):
@@ -683,13 +683,13 @@ def supprimer_equipement_ligne(num_ligne_sheet):
 # POINTS DE RÉSERVE (onglet dédié "PointsReserve")
 # ==========================================
 def lire_points_reserve():
-    """Lit l'onglet PointsReserve : Site | Categorie | Sous_equipement | Nombre."""
+    """Lit l'onglet PointsReserve : Site | Installation | Sous_equipement | Nombre."""
     return sheets_lire("PointsReserve", "A:D")
 
 
-def ajouter_point_reserve(site, categorie, sous_eq, nombre):
+def ajouter_point_reserve(site, installation, sous_eq, nombre):
     """Ajoute une ligne dans l'onglet PointsReserve."""
-    return sheets_append("PointsReserve", [site, categorie, sous_eq, str(nombre)])
+    return sheets_append("PointsReserve", [site, installation, sous_eq, str(nombre)])
 
 
 def supprimer_ligne_generique(onglet, num_ligne_sheet, nb_colonnes):
@@ -853,7 +853,7 @@ if acces_autorise:
             c1,c2,c3,c4=st.columns(4)
             with c1: f_site =st.selectbox("Site",["Tous","SGB","MEG"])
             with c2: f_annee=st.selectbox("Année",["Tous","2025","2026"])
-            with c3: f_cat  =st.selectbox("Domaine technique",["Tous"]+list(SOUS_EQUIPEMENTS.keys()))
+            with c3: f_cat  =st.selectbox("Installation",["Tous"]+list(SOUS_EQUIPEMENTS.keys()))
             with c4:
                 opts=["Tous"]+SOUS_EQUIPEMENTS[f_cat] if f_cat!="Tous" else ["Tous"]+[i for sub in SOUS_EQUIPEMENTS.values() for i in sub]
                 f_sous_eq=st.selectbox("Sous-équipement",opts)
@@ -1297,14 +1297,14 @@ if acces_autorise:
             actif_sgb = (st.session_state.site_exig_sel == "SGB")
             if st.button("🏢 SGB", use_container_width=True, type="primary" if actif_sgb else "secondary"):
                 st.session_state.site_exig_sel = "SGB"
-                st.session_state.cat_exig_sel = None  # Reset la catégorie si on change de site
+                st.session_state.cat_exig_sel = None  # Reset l'installation si on change de site
                 st.rerun()
             
         with s2:
             actif_meg = (st.session_state.site_exig_sel == "MEG")
             if st.button("🏢 MEG", use_container_width=True, type="primary" if actif_meg else "secondary"):
                 st.session_state.site_exig_sel = "MEG"
-                st.session_state.cat_exig_sel = None  # Reset la catégorie si on change de site
+                st.session_state.cat_exig_sel = None  # Reset l'installation si on change de site
                 st.rerun()
 
     # --- CORRECTION DE LA LOGIQUE D'AFFICHAGE ---
@@ -1323,11 +1323,11 @@ if acces_autorise:
                 "Appareil pression de gaz":  "⚙️ Pression gaz",
             }
 
-        # Création dynamique des boutons de catégories
+        # Création dynamique des boutons des installations
             cat_cols = st.columns(5)
             for i, (cat, couleur) in enumerate(COULEURS_CAT.items()):
                 with cat_cols[i % 5]:
-                    nb_total_cat = int(df_site[df_site["Categorie"] == cat]["Nombre"].sum()) if not df_site.empty else 0
+                    nb_total_cat = int(df_site[df_site["Installation"] == cat]["Nombre"].sum()) if not df_site.empty else 0
                     actif_cat = (st.session_state.cat_exig_sel == cat)
                     label_court = NOMS_COURTS_CAT.get(cat, cat)
                 
@@ -1337,12 +1337,12 @@ if acces_autorise:
                         st.session_state.cat_exig_sel = cat
                         st.rerun()
 
-        # Niveau 3 : sous-équipements de la catégorie choisie
+        # Niveau 3 : sous-équipements de l'istallation choisie
             if st.session_state.cat_exig_sel:
                 cat_sel = st.session_state.cat_exig_sel
                 st.markdown(f"<p style='font-size:13px;color:#64748B;font-weight:600;margin:16px 0 8px 0;'>Sous-équipements — {cat_sel} ({site_sel}) :</p>", unsafe_allow_html=True)
 
-                df_cat = df_site[df_site["Categorie"] == cat_sel] if not df_site.empty else pd.DataFrame()
+                df_cat = df_site[df_site["Installation"] == cat_sel] if not df_site.empty else pd.DataFrame()
                 couleur_cat = COULEURS_CAT.get(cat_sel, "#94a3b8")
 
                 if df_cat.empty:
@@ -1710,7 +1710,7 @@ if acces_autorise:
                     st.markdown("<p style='font-weight:600;color:#1E293B;margin:0 0 10px 0;font-size:13px;'>🔍 Filtrer les points de réserve</p>",unsafe_allow_html=True)
                     fr1,fr2,fr3 = st.columns(3)
                     sites_dispo = ["Tous"]+sorted(df_reserve["Site"].dropna().unique().tolist()) if "Site" in df_reserve.columns else ["Tous"]
-                    cats_dispo  = ["Tous"]+sorted(df_reserve["Categorie"].dropna().unique().tolist()) if "Categorie" in df_reserve.columns else ["Tous"]
+                    cats_dispo  = ["Tous"]+sorted(df_reserve["Installation"].dropna().unique().tolist()) if "Installation" in df_reserve.columns else ["Tous"]
                     with fr1: f_res_site = st.selectbox("Site",sites_dispo,key="f_res_site")
                     with fr2: f_res_cat  = st.selectbox("Installation",cats_dispo,key="f_res_cat")
                     with fr3: f_res_seq  = st.text_input("Recherche sous-équipement",key="f_res_seq")
@@ -1718,13 +1718,13 @@ if acces_autorise:
                 df_reserve_f = df_reserve.copy()
                 if f_res_site!="Tous" and "Site" in df_reserve_f.columns:
                     df_reserve_f = df_reserve_f[df_reserve_f["Site"]==f_res_site]
-                if f_res_cat!="Tous" and "Categorie" in df_reserve_f.columns:
-                    df_reserve_f = df_reserve_f[df_reserve_f["Categorie"]==f_res_cat]
+                if f_res_cat!="Tous" and "Installation" in df_reserve_f.columns:
+                    df_reserve_f = df_reserve_f[df_reserve_f["Installation"]==f_res_cat]
                 if f_res_seq.strip() and "Sous_equipement" in df_reserve_f.columns:
                     df_reserve_f = df_reserve_f[df_reserve_f["Sous_equipement"].astype(str).str.contains(f_res_seq.strip(),case=False,na=False)]
 
                 st.dataframe(df_reserve_f.rename(columns={
-                    "Site":"Site","Categorie":"Installation","Sous_equipement":"Sous équipement","Nombre":"Nbre points de réserve"
+                    "Site":"Site","Installation":"Installation","Sous_equipement":"Sous équipement","Nombre":"Nbre points de réserve"
                 }),hide_index=True,use_container_width=True)
 
                 st.markdown("<br>",unsafe_allow_html=True)
@@ -1746,19 +1746,19 @@ if acces_autorise:
                 st.markdown("<br>",unsafe_allow_html=True)
                 st.markdown("<p style='font-weight:700;font-size:14px;color:#0F172A;text-align:center;margin-bottom:10px;'>Répartition par installation</p>",unsafe_allow_html=True)
 
-                # --- Répartition par catégorie : MEG (gauche) | légende (milieu) | SGB (droite) ---
-                if "Categorie" in df_reserve_f.columns and "Site" in df_reserve_f.columns and not df_reserve_f.empty:
-                    all_cats = sorted(df_reserve_f["Categorie"].dropna().unique().tolist())
+                # --- Répartition par installation : MEG (gauche) | légende (milieu) | SGB (droite) ---
+                if "Installation" in df_reserve_f.columns and "Site" in df_reserve_f.columns and not df_reserve_f.empty:
+                    all_cats = sorted(df_reserve_f["Installation"].dropna().unique().tolist())
                     palette = px.colors.qualitative.Set1
                     color_map = {cat: palette[i % len(palette)] for i,cat in enumerate(all_cats)}
 
                     gcat1,gcat2,gcat3 = st.columns([2,1,2])
 
                     with gcat1:
-                        df_meg_cat = df_reserve_f[df_reserve_f["Site"]=="MEG"].groupby("Categorie")["Nombre"].sum().reset_index()
+                        df_meg_cat = df_reserve_f[df_reserve_f["Site"]=="MEG"].groupby("Installation")["Nombre"].sum().reset_index()
                         if not df_meg_cat.empty:
-                            figMEG = px.pie(df_meg_cat,values="Nombre",names="Categorie",hole=0.6,
-                                             color="Categorie",color_discrete_map=color_map)
+                            figMEG = px.pie(df_meg_cat,values="Nombre",names="Installation",hole=0.6,
+                                             color="Installation",color_discInstallationete_map=color_map)
                             figMEG.update_traces(textposition='inside',textinfo='percent',showlegend=False)
                             figMEG.update_layout(title="MEG",title_x=0.5,showlegend=False,
                                                   margin=dict(t=40,b=10,l=10,r=10),height=260,
@@ -1779,10 +1779,10 @@ if acces_autorise:
                         st.markdown(legende_html,unsafe_allow_html=True)
 
                     with gcat3:
-                        df_sgb_cat = df_reserve_f[df_reserve_f["Site"]=="SGB"].groupby("Categorie")["Nombre"].sum().reset_index()
+                        df_sgb_cat = df_reserve_f[df_reserve_f["Site"]=="SGB"].groupby("Installation")["Nombre"].sum().reset_index()
                         if not df_sgb_cat.empty:
-                            figSGB = px.pie(df_sgb_cat,values="Nombre",names="Categorie",hole=0.6,
-                                             color="Categorie",color_discrete_map=color_map)
+                            figSGB = px.pie(df_sgb_cat,values="Nombre",names="Installation",hole=0.6,
+                                             color="Installation",color_discrete_map=color_map)
                             figSGB.update_traces(textposition='inside',textinfo='percent',showlegend=False)
                             figSGB.update_layout(title="SGB",title_x=0.5,showlegend=False,
                                                   margin=dict(t=40,b=10,l=10,r=10),height=260,
@@ -1793,11 +1793,11 @@ if acces_autorise:
                 else:
                     st.info("Aucune donnée à afficher pour le graphe par installation.")
 
-                with st.expander("🗑️ Supprimer un point de réserve"):
+                with st.expander("🗑️ Supprimer une action"):
                     for orig_idx,row_r in df_reserve.iterrows():
                         dcx1,dcx2 = st.columns([5,1])
                         with dcx1:
-                            st.write(f"{row_r.get('Site','')} — {row_r.get('Categorie','')} — {row_r.get('Sous_equipement','')} — {row_r.get('Nombre',0)} pt(s)")
+                            st.write(f"{row_r.get('Site','')} — {row_r.get('Installation','')} — {row_r.get('Sous_equipement','')} — {row_r.get('Nombre',0)} pt(s)")
                         with dcx2:
                             if st.button("🗑️",key=f"del_res_{orig_idx}"):
                                 num_ligne_sheet = orig_idx+2
