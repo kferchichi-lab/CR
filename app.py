@@ -320,7 +320,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
             taux de réalisation, planification, respect des délais, non-conformités et points de réserve.
         </div>
 
-        <div class="category-title">📊 Indicateurs clés de performance</div>
+        <div class="category-title">📊 Indicateurs de performance</div>
 
         <div class="kpi-card">
             <p class="kpi-title">1. Taux de réalisation 2026</p>
@@ -1575,9 +1575,9 @@ if acces_autorise:
                 with k1c:
                     st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Taux de réalisation 2026</p></p>",unsafe_allow_html=True)
                     if nb_visites_realisees>0:
-                        dfp2=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_respectes,nb_non_respectes]})
+                        dfp2=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_respectes,nb_non_respectes]})
                         fig2=px.pie(dfp2,values="Nombre",names="Statut",hole=0.6,color="Statut",
-                                    color_discrete_map={"Respecté":"#0EA5E9","Non respecté":"#EF4444"})
+                                    color_discrete_map={"Réalisés":"#10B981","Restants":"#EF4444"})
                         fig2.update_traces(textposition='inside',textinfo='percent+label')
                         fig2.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
@@ -1589,9 +1589,9 @@ if acces_autorise:
                 with k2c:
                     st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤ 1 mois)</p>",unsafe_allow_html=True)
                     if nb_total_2026>0:
-                        dfp1=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_realises_2026,nb_restants_2026]})
+                        dfp1=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_realises_2026,nb_restants_2026]})
                         fig1=px.pie(dfp1,values="Nombre",names="Statut",hole=0.6,color="Statut",
-                                    color_discrete_map={"Réalisés":"#10B981","Restants":"#EF4444"})
+                                    color_discrete_map={"Respecté":"#0EA5E9","Non respecté":"#EF4444"})
                         fig1.update_traces(textposition='inside',textinfo='percent+label')
                         fig1.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
