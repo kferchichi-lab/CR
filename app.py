@@ -929,7 +929,7 @@ if acces_autorise:
 
     # ---- ONGLET 2 : PLANNING ----
     with tab2:
-        st.markdown("<br><p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📅 Prochaines échéances calculées</p>",unsafe_allow_html=True)
+        st.markdown("<br><p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📅 Prochaines échéances</p>",unsafe_allow_html=True)
 
         # ---- FILTRES ÉCHÉANCES ----
         with st.container(border=True):
@@ -1422,7 +1422,7 @@ if acces_autorise:
         st.divider()
 
         if not df_exig.empty:
-            st.markdown("### 📄 Rapports check-lists")
+            st.markdown("### 📄 Check-lists des équipements contractés")
             col_sgb, col_meg = st.columns(2)
             date_str = datetime.date.today().strftime('%d_%m_%Y')
 
