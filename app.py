@@ -844,7 +844,7 @@ if acces_autorise:
 
     st.markdown("<br>",unsafe_allow_html=True)
 
-    liste_onglets = ["📋 Rapports de contrôle archivés","📅 Suivi de performance & Planification","📌 Exigences"]
+    liste_onglets = ["📋 Rapports CR","📅 Planification","📌 Exigences"]
     if role == "Responsable" and password_correct:
         liste_onglets.append("👥 Statistiques")
         liste_onglets.append("📊 KPI")
@@ -898,7 +898,7 @@ if acces_autorise:
             if col_reelle_doc: df_f=df_f.drop(columns=col_reelle_doc)
             st.dataframe(df_f,column_config={
                 (col_lien[0] if col_lien else "Lien PDF"):st.column_config.LinkColumn("Action",display_text="Voir le rapport"),
-                (col_ex[0]   if col_ex   else "Exercice"):st.column_config.NumberColumn("Exercice",format="%d"),
+                (col_ex[0]   if col_ex   else "Année"):st.column_config.NumberColumn("Année",format="%d"),
                 (col_date[0] if col_date else "Date"):    st.column_config.DateColumn("Date de dernier contrôle",format="DD/MM/YYYY"),
             },hide_index=True,use_container_width=True)
         else:
