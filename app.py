@@ -1573,7 +1573,7 @@ if acces_autorise:
                 k1c,k2c = st.columns(2)
 
                 with k1c:
-                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤ 1 mois)</p>",unsafe_allow_html=True)
+                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Taux de réalisation 2026</p></p>",unsafe_allow_html=True)
                     if nb_visites_realisees>0:
                         dfp2=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_respectes,nb_non_respectes]})
                         fig2=px.pie(dfp2,values="Nombre",names="Statut",hole=0.6,color="Statut",
@@ -1587,7 +1587,7 @@ if acces_autorise:
                         st.info("Aucune visite réalisée à ce jour.")
 
                 with k2c:
-                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Taux de réalisation 2026</p>",unsafe_allow_html=True)
+                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤ 1 mois)</p>",unsafe_allow_html=True)
                     if nb_total_2026>0:
                         dfp1=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_realises_2026,nb_restants_2026]})
                         fig1=px.pie(dfp1,values="Nombre",names="Statut",hole=0.6,color="Statut",
