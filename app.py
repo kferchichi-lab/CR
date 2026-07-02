@@ -322,7 +322,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
             taux de réalisation, respect des délais, non-conformités et actions de contrôle.
         </div>
 
-        <div class="category-title">📊 Indicateurs de performance</div>
+        <div class="category-title">Indicateurs de performance</div>
 
         <div class="kpi-card">
             <p class="kpi-title">1. Taux de réalisation 2026</p>
