@@ -1541,18 +1541,6 @@ if acces_autorise:
                 df_k = df_k.drop_duplicates(subset=cles_k, keep="last")
 
                 # ---- KPI 1 : Taux de réalisation 2026 (échéances théoriques comprises entre 01/01/2026 et 31/12/2026) ----
-                df_realises_k = df_k[df_k["_date_reelle"].notna()].copy()
-                nb_visites_realisees = len(df_realises_k)
-                if nb_visites_realisees > 0:
-                    df_realises_k["_ecart"] = (df_realises_k["_date_reelle"] - df_realises_k["_date_brute"]).dt.days.abs()
-                    nb_respectes = int((df_realises_k["_ecart"] <= 3).sum())
-                else:
-                    nb_respectes = 0
-                nb_non_respectes = nb_visites_realisees - nb_respectes
-                taux2 = round(nb_respectes/nb_visites_realisees*100,1) if nb_visites_realisees>0 else 0
-
-
-                # ---- KPI 2 : Taux de respect de délai de visite (écart ≤ 3j vs échéance théorique initiale) ----
                 df_2026 = df_k[df_k["_date_brute"].dt.year == 2026]
                 nb_total_2026    = len(df_2026)
                 nb_realises_2026 = int(df_2026["_date_reelle"].notna().sum())
@@ -1562,6 +1550,18 @@ if acces_autorise:
                     "kpi1": {"taux":taux1, "realises":nb_realises_2026, "restants":nb_restants_2026, "total":nb_total_2026},
                     "kpi2": {"taux":taux2, "respectes":nb_respectes, "non_respectes":nb_non_respectes, "total":nb_visites_realisees}
                 }
+
+
+                # ---- KPI 2 : Taux de respect de délai de visite (écart ≤ 3j vs échéance théorique initiale) ----
+                df_realises_k = df_k[df_k["_date_reelle"].notna()].copy()
+                nb_visites_realisees = len(df_realises_k)
+                if nb_visites_realisees > 0:
+                    df_realises_k["_ecart"] = (df_realises_k["_date_reelle"] - df_realises_k["_date_brute"]).dt.days.abs()
+                    nb_respectes = int((df_realises_k["_ecart"] <= 3).sum())
+                else:
+                    nb_respectes = 0
+                nb_non_respectes = nb_visites_realisees - nb_respectes
+                taux2 = round(nb_respectes/nb_visites_realisees*100,1) if nb_visites_realisees>0 else 0
 
                 k1c,k2c = st.columns(2)
 
