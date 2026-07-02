@@ -331,8 +331,8 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
             par rapport au nombre total de contrôles dus sur cette période.</p>
             <p class="kpi-value">{k2['taux']}%</p>
             {barre(k2['taux'], '#0EA5E9')}
-            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['respectes']} respecté(s) / {k2['non_respectes']} non respecté(s)
-            — sur {k2['total']} visite(s) réalisée(s)</p>
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['respectes']} réalisés(s) / {k2['non_respectes']} non réalisés(s)
+            — sur {k2['total']} visite(s) planifiée(s)</p>
         </div>
 
         <div class="kpi-card" style="border-left-color:#0EA5E9;">
@@ -342,8 +342,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
             de visites réalisées.</p>
             <p class="kpi-value">{k1['taux']}%</p>
             {barre(k1['taux'], '#10B981')}
-            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k1['realises']} réalisés / {k1['restants']} restants
-            — sur {k1['total']} contrôle(s) dû(s) en 2026</p>
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k1['realises']} respectés / {k1['restants']} réalisés</p>
         </div>
     </div>
 
