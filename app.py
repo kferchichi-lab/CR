@@ -1546,10 +1546,7 @@ if acces_autorise:
                 nb_realises_2026 = int(df_2026["_date_reelle"].notna().sum())
                 nb_restants_2026 = nb_total_2026 - nb_realises_2026
                 taux1 = round(nb_realises_2026/nb_total_2026*100,1) if nb_total_2026>0 else 0
-                kpi_data = {
-                    "kpi1": {"taux":taux1, "realises":nb_realises_2026, "restants":nb_restants_2026, "total":nb_total_2026},
-                    "kpi2": {"taux":taux2, "respectes":nb_respectes, "non_respectes":nb_non_respectes, "total":nb_visites_realisees}
-                }
+                
 
 
                 # ---- KPI 2 : Taux de respect de délai de visite (écart ≤ 3j vs échéance théorique initiale) ----
@@ -1562,6 +1559,16 @@ if acces_autorise:
                     nb_respectes = 0
                 nb_non_respectes = nb_visites_realisees - nb_respectes
                 taux2 = round(nb_respectes/nb_visites_realisees*100,1) if nb_visites_realisees>0 else 0
+
+
+
+                kpi_data = {
+                    "kpi1": {"taux":taux1, "realises":nb_realises_2026, "restants":nb_restants_2026, "total":nb_total_2026},
+                    "kpi2": {"taux":taux2, "respectes":nb_respectes, "non_respectes":nb_non_respectes, "total":nb_visites_realisees}
+                }
+
+
+
 
                 k1c,k2c = st.columns(2)
 
