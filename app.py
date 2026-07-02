@@ -342,7 +342,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
             de visites réalisées.</p>
             <p class="kpi-value">{k1['taux']}%</p>
             {barre(k1['taux'], '#10B981')}
-            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k1['realises']} réalisés / {k1['restants']} restants
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k1['respectes']} respecté(s) / {k1['respectes']} réalisés
             — sur {k1['total']} contrôle(s) dû(s) en 2026</p>
         </div>
     </div>
