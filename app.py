@@ -13,15 +13,6 @@ from weasyprint import HTML
 import fitz  # PyMuPDF
 
 def afficher_apercu_pdf(pdf_bytes, hauteur=800):
-    """
-    Affiche un aperçu du PDF sous forme d'images (une par page).
-
-    On évite volontairement l'ancienne méthode <iframe src="data:application/pdf;base64,...">
-    car elle est peu fiable : bloquée par de nombreux navigateurs mobiles (Safari iOS, Chrome
-    mobile), sujette aux restrictions CSP quand elle est imbriquée dans l'iframe de Streamlit,
-    et limitée en taille selon les navigateurs. Ici, le rendu est fait côté serveur avec
-    PyMuPDF, donc il fonctionne de façon identique sur tous les appareils.
-    """
     try:
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         nb_pages = len(doc)
