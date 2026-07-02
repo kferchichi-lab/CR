@@ -325,7 +325,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
         <div class="header-sub">Tunisie Profilés d'Aluminium — Direction Maintenance &amp; TN</div>
         <div class="meta-info">
             <b>Date d'édition :</b> {date_str}<br>
-            <b>Objet :</b> Synthèse des indicateurs clés de performance (KPI) du suivi de conformité réglementaire —
+            <b>Objet :</b> Synthèse des indicateurs de performance du suivi de conformité réglementaire —
             taux de réalisation, planification, respect des délais, non-conformités et points de réserve.
         </div>
 
@@ -1532,7 +1532,7 @@ if acces_autorise:
     # ---- ONGLET 4 : KPI (Responsable uniquement) ----
     if tab_kpi and role=="Responsable" and password_correct:
         with tab_kpi:
-            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Indicateurs clés de performance (KPI)</p>",unsafe_allow_html=True)
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Indicateurs de performance</p>",unsafe_allow_html=True)
             col_r_kpi,_=st.columns([1,5])
             with col_r_kpi:
                 if st.button("🔄",key="refresh_kpi"): st.cache_data.clear(); st.rerun()
