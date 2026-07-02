@@ -1573,20 +1573,6 @@ if acces_autorise:
                 k1c,k2c = st.columns(2)
 
                 with k1c:
-                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Taux de réalisation 2026</p>",unsafe_allow_html=True)
-                    if nb_total_2026>0:
-                        dfp1=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_realises_2026,nb_restants_2026]})
-                        fig1=px.pie(dfp1,values="Nombre",names="Statut",hole=0.6,color="Statut",
-                                    color_discrete_map={"Réalisés":"#10B981","Restants":"#EF4444"})
-                        fig1.update_traces(textposition='inside',textinfo='percent+label')
-                        fig1.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
-                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
-                        st.plotly_chart(fig1,use_container_width=True,config={'displayModeBar':False})
-                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% réalisés ({nb_realises_2026}/{nb_total_2026})</p>",unsafe_allow_html=True)
-                    else:
-                        st.info("Aucun contrôle avec échéance théorique en 2026.")
-
-                with k2c:
                     st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤ 1 mois)</p>",unsafe_allow_html=True)
                     if nb_visites_realisees>0:
                         dfp2=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_respectes,nb_non_respectes]})
@@ -1599,6 +1585,20 @@ if acces_autorise:
                         st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% respecté ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
                     else:
                         st.info("Aucune visite réalisée à ce jour.")
+
+                with k2c:
+                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Taux de réalisation 2026</p>",unsafe_allow_html=True)
+                    if nb_total_2026>0:
+                        dfp1=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_realises_2026,nb_restants_2026]})
+                        fig1=px.pie(dfp1,values="Nombre",names="Statut",hole=0.6,color="Statut",
+                                    color_discrete_map={"Réalisés":"#10B981","Restants":"#EF4444"})
+                        fig1.update_traces(textposition='inside',textinfo='percent+label')
+                        fig1.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
+                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig1,use_container_width=True,config={'displayModeBar':False})
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% réalisés ({nb_realises_2026}/{nb_total_2026})</p>",unsafe_allow_html=True)
+                    else:
+                        st.info("Aucun contrôle avec échéance théorique en 2026.")
 
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
 
