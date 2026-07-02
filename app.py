@@ -277,7 +277,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
     if carto_b64:
         carto_html = f"""
         <div class="page">
-            <div class="category-title">🗺️ Taux de non-conformité des sites</div>
+            <div class="category-title">Taux de non-conformité des sites</div>
             <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
             Cartographie de synthèse du taux de non-conformité par site et par installation,
             établie lors de la campagne de contrôle réglementaire 2026.</p>
@@ -355,7 +355,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
     <div class="page">
         <div class="category-title">Actions de contrôle</div>
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
-        Liste consolidée des points de réserve relevés par site, installation et sous-équipement.</p>
+        Liste consolidée des actions de contrôle relevées par site, installation et sous-équipement.</p>
         <table>
             <thead><tr><th>Site</th><th>Installation</th><th>Sous équipement</th><th>Nbre points</th></tr></thead>
             <tbody>{html_reserve_rows}</tbody>
