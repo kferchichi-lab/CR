@@ -276,7 +276,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
     if carto_b64:
         carto_html = f"""
         <div class="page">
-            <div class="category-title">🗺️ Taux de non-conformité de site</div>
+            <div class="category-title">🗺️ Taux de non-conformité des sites</div>
             <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
             Cartographie de synthèse du taux de non-conformité par site et par catégorie d'équipement,
             établie lors de la campagne de contrôle réglementaire 2026.</p>
@@ -1666,7 +1666,7 @@ if acces_autorise:
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
 
             # ================= POINTS DE RÉSERVE =================
-            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📌 Points de réserve</p>",unsafe_allow_html=True)
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📌 Actions de contrôle</p>",unsafe_allow_html=True)
 
             with st.spinner("Chargement des points de réserve..."):
                 df_reserve = lire_points_reserve()
