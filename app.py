@@ -1758,7 +1758,7 @@ if acces_autorise:
                         df_meg_cat = df_reserve_f[df_reserve_f["Site"]=="MEG"].groupby("Installation")["Nombre"].sum().reset_index()
                         if not df_meg_cat.empty:
                             figMEG = px.pie(df_meg_cat,values="Nombre",names="Installation",hole=0.6,
-                                             color="Installation",color_discInstallationete_map=color_map)
+                                             color="Installation",color_discrete_map=color_map)
                             figMEG.update_traces(textposition='inside',textinfo='percent',showlegend=False)
                             figMEG.update_layout(title="MEG",title_x=0.5,showlegend=False,
                                                   margin=dict(t=40,b=10,l=10,r=10),height=260,
