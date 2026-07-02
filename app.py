@@ -1578,11 +1578,11 @@ if acces_autorise:
                         dfp2=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_respectes,nb_non_respectes]})
                         fig2=px.pie(dfp2,values="Nombre",names="Statut",hole=0.6,color="Statut",
                                     color_discrete_map={"Réalisés":"#10B981","Restants":"#EF4444"})
-                        fig2.update_traces(textposition='inside',textinfo='percent+label')
+                        fig2.update_traces(textposition='inside',textinfo='percent')
                         fig2.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig2,use_container_width=True,config={'displayModeBar':False})
-                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% réaliséz ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% réalisés ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
                     else:
                         st.info("Aucune visite réalisée à ce jour.")
 
@@ -1592,7 +1592,7 @@ if acces_autorise:
                         dfp1=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_realises_2026,nb_restants_2026]})
                         fig1=px.pie(dfp1,values="Nombre",names="Statut",hole=0.6,color="Statut",
                                     color_discrete_map={"Respecté":"#0EA5E9","Non respecté":"#EF4444"})
-                        fig1.update_traces(textposition='inside',textinfo='percent+label')
+                        fig1.update_traces(textposition='inside',textinfo='percent')
                         fig1.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig1,use_container_width=True,config={'displayModeBar':False})
