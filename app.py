@@ -329,21 +329,21 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
             <p class="kpi-desc">Proportion des contrôles réglementaires dont l'échéance théorique est comprise
             entre le 01/01/2026 et le 31/12/2026, effectivement réalisés (date réelle de visite enregistrée)
             par rapport au nombre total de contrôles dus sur cette période.</p>
-            <p class="kpi-value">{k1['taux']}%</p>
-            {barre(k1['taux'], '#10B981')}
-            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k1['realises']} réalisés / {k1['restants']} restants
-            — sur {k1['total']} contrôle(s) dû(s) en 2026</p>
-        </div>
-
-        <div class="kpi-card" style="border-left-color:#0EA5E9;">
-            <p class="kpi-title">3. Taux de respect de délai de visite</p>
-            <p class="kpi-desc">Proportion des visites réalisées dont l'écart entre la date réelle de contrôle
-            et l'échéance théorique initiale du cycle n'excède pas 3 jours, par rapport au nombre total
-            de visites réalisées.</p>
             <p class="kpi-value">{k2['taux']}%</p>
             {barre(k2['taux'], '#0EA5E9')}
             <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['respectes']} respecté(s) / {k2['non_respectes']} non respecté(s)
             — sur {k2['total']} visite(s) réalisée(s)</p>
+        </div>
+
+        <div class="kpi-card" style="border-left-color:#0EA5E9;">
+            <p class="kpi-title">2. Taux de respect de délai de visite</p>
+            <p class="kpi-desc">Proportion des visites réalisées dont l'écart entre la date réelle de contrôle
+            et l'échéance théorique initiale du cycle n'excède pas 1 mois, par rapport au nombre total
+            de visites réalisées.</p>
+            <p class="kpi-value">{k1['taux']}%</p>
+            {barre(k1['taux'], '#10B981')}
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k1['realises']} réalisés / {k1['restants']} restants
+            — sur {k1['total']} contrôle(s) dû(s) en 2026</p>
         </div>
     </div>
 
