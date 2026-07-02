@@ -1621,7 +1621,7 @@ if acces_autorise:
                         st.info("Aucune donnée disponible.")
 
                 with k3c:
-                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤3j)</p>",unsafe_allow_html=True)
+                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤ 1 mois)</p>",unsafe_allow_html=True)
                     if nb_visites_realisees>0:
                         dfp3=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_respectes,nb_non_respectes]})
                         fig3=px.pie(dfp3,values="Nombre",names="Statut",hole=0.6,color="Statut",
