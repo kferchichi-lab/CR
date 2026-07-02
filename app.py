@@ -1582,7 +1582,7 @@ if acces_autorise:
                         fig2.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig2,use_container_width=True,config={'displayModeBar':False})
-                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% respecté ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% réaliséz ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
                     else:
                         st.info("Aucune visite réalisée à ce jour.")
 
@@ -1596,7 +1596,7 @@ if acces_autorise:
                         fig1.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig1,use_container_width=True,config={'displayModeBar':False})
-                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% réalisés ({nb_realises_2026}/{nb_total_2026})</p>",unsafe_allow_html=True)
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% respectés ({nb_realises_2026}/{nb_total_2026})</p>",unsafe_allow_html=True)
                     else:
                         st.info("Aucun contrôle avec échéance théorique en 2026.")
 
