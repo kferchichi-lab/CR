@@ -1554,7 +1554,7 @@ if acces_autorise:
                 nb_visites_realisees = len(df_realises_k)
                 if nb_visites_realisees > 0:
                     df_realises_k["_ecart"] = (df_realises_k["_date_reelle"] - df_realises_k["_date_brute"]).dt.days.abs()
-                    nb_respectes = int((df_realises_k["_ecart"] <= 31).sum())
+                    nb_respectes = int((df_realises_k["_ecart"] <= 3).sum())
                 else:
                     nb_respectes = 0
                 nb_non_respectes = nb_visites_realisees - nb_respectes
@@ -1596,7 +1596,7 @@ if acces_autorise:
                         fig1.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig1,use_container_width=True,config={'displayModeBar':False})
-                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% respectés ({nb_respectes}/{nb_respectes})</p>",unsafe_allow_html=True)
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% respectés ({nb_realises_2026}/{nb_total_2026})</p>",unsafe_allow_html=True)
                     else:
                         st.info("Aucun contrôle avec échéance théorique en 2026.")
 
