@@ -1728,29 +1728,71 @@ if acces_autorise:
                 }),hide_index=True,use_container_width=True)
 
                 st.markdown("<br>",unsafe_allow_html=True)
-                gr1,gr2 = st.columns(2)
-                with gr1:
+
+                # --- Répartition par site : graphique centré ---
+                csite1,csite2,csite3 = st.columns([1,2,1])
+                with csite2:
                     if "Site" in df_reserve_f.columns and not df_reserve_f.empty:
                         df_by_site = df_reserve_f.groupby("Site")["Nombre"].sum().reset_index()
                         figS = px.pie(df_by_site,values="Nombre",names="Site",hole=0.6,
                                       color_discrete_sequence=['#1E3A8A','#0EA5E9','#94A3B8'])
                         figS.update_traces(textposition='inside',textinfo='percent+label')
-                        figS.update_layout(title="Répartition par site",margin=dict(t=40,b=10,l=10,r=10),height=280,
+                        figS.update_layout(title="Répartition par site",title_x=0.5,margin=dict(t=40,b=10,l=10,r=10),height=280,
                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(figS,use_container_width=True,config={'displayModeBar':False})
                     else:
                         st.info("Aucune donnée à afficher pour le graphe par site.")
-                with gr2:
-                    if "Categorie" in df_reserve_f.columns and not df_reserve_f.empty:
-                        df_by_cat = df_reserve_f.groupby("Categorie")["Nombre"].sum().reset_index()
-                        figC = px.pie(df_by_cat,values="Nombre",names="Categorie",hole=0.6,
-                                      color_discrete_sequence=px.colors.qualitative.Set2)
-                        figC.update_traces(textposition='inside',textinfo='percent')
-                        figC.update_layout(title="Répartition par catégorie",margin=dict(t=40,b=10,l=10,r=10),height=280,
-                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
-                        st.plotly_chart(figC,use_container_width=True,config={'displayModeBar':False})
-                    else:
-                        st.info("Aucune donnée à afficher pour le graphe par catégorie.")
+
+                st.markdown("<br>",unsafe_allow_html=True)
+                st.markdown("<p style='font-weight:700;font-size:14px;color:#0F172A;text-align:center;margin-bottom:10px;'>Répartition par catégorie</p>",unsafe_allow_html=True)
+
+                # --- Répartition par catégorie : MEG (gauche) | légende (milieu) | SGB (droite) ---
+                if "Categorie" in df_reserve_f.columns and "Site" in df_reserve_f.columns and not df_reserve_f.empty:
+                    all_cats = sorted(df_reserve_f["Categorie"].dropna().unique().tolist())
+                    palette = px.colors.qualitative.Set2
+                    color_map = {cat: palette[i % len(palette)] for i,cat in enumerate(all_cats)}
+
+                    gcat1,gcat2,gcat3 = st.columns([2,1,2])
+
+                    with gcat1:
+                        df_meg_cat = df_reserve_f[df_reserve_f["Site"]=="MEG"].groupby("Categorie")["Nombre"].sum().reset_index()
+                        if not df_meg_cat.empty:
+                            figMEG = px.pie(df_meg_cat,values="Nombre",names="Categorie",hole=0.6,
+                                             color="Categorie",color_discrete_map=color_map)
+                            figMEG.update_traces(textposition='inside',textinfo='percent',showlegend=False)
+                            figMEG.update_layout(title="MEG",title_x=0.5,showlegend=False,
+                                                  margin=dict(t=40,b=10,l=10,r=10),height=260,
+                                                  paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                            st.plotly_chart(figMEG,use_container_width=True,config={'displayModeBar':False})
+                        else:
+                            st.info("Aucune donnée MEG.")
+
+                    with gcat2:
+                        legende_html = "<div style='padding-top:35px;'>"
+                        for cat in all_cats:
+                            legende_html += f"""
+                                <div style='display:flex;align-items:center;gap:8px;margin-bottom:12px;'>
+                                    <span style='width:12px;height:12px;min-width:12px;border-radius:3px;background:{color_map[cat]};display:inline-block;'></span>
+                                    <span style='font-size:11.5px;color:#334155;'>{cat}</span>
+                                </div>
+                            """
+                        legende_html += "</div>"
+                        st.markdown(legende_html,unsafe_allow_html=True)
+
+                    with gcat3:
+                        df_sgb_cat = df_reserve_f[df_reserve_f["Site"]=="SGB"].groupby("Categorie")["Nombre"].sum().reset_index()
+                        if not df_sgb_cat.empty:
+                            figSGB = px.pie(df_sgb_cat,values="Nombre",names="Categorie",hole=0.6,
+                                             color="Categorie",color_discrete_map=color_map)
+                            figSGB.update_traces(textposition='inside',textinfo='percent',showlegend=False)
+                            figSGB.update_layout(title="SGB",title_x=0.5,showlegend=False,
+                                                  margin=dict(t=40,b=10,l=10,r=10),height=260,
+                                                  paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                            st.plotly_chart(figSGB,use_container_width=True,config={'displayModeBar':False})
+                        else:
+                            st.info("Aucune donnée SGB.")
+                else:
+                    st.info("Aucune donnée à afficher pour le graphe par catégorie.")
 
                 with st.expander("🗑️ Supprimer un point de réserve"):
                     for orig_idx,row_r in df_reserve.iterrows():
