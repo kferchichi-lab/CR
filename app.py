@@ -353,7 +353,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
     {carto_html}
 
     <div class="page">
-        <div class="category-title">📌 Actions de contrôle</div>
+        <div class="category-title">Actions de contrôle</div>
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
         Liste consolidée des points de réserve relevés par site, installation et sous-équipement.</p>
         <table>
