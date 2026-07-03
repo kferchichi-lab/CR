@@ -1622,33 +1622,23 @@ if acces_autorise:
 
                 nb_total_2026 = sum(nb_campagnes_attendues(ins) for ins in INSTALLATIONS_SUIVIES) * len(SITES_SUIVIS)
 
-                df_2026 = df_k[df_k["_date_brute"].dt.year == 2026].copy()
+                # Un contrôle est compté comme réalisé en 2026 dès lors que sa DATE RÉELLE de visite
+                # tombe en 2026, quelle que soit l'année de l'échéance théorique associée.
+                df_realises_2026 = df_k[df_k["_date_reelle"].notna() & (df_k["_date_reelle"].dt.year == 2026)].copy()
                 if col_site_k:
-                    df_2026 = df_2026[df_2026[col_site_k[0]].astype(str).str.strip().isin(SITES_SUIVIS)]
+                    df_realises_2026 = df_realises_2026[df_realises_2026[col_site_k[0]].astype(str).str.strip().isin(SITES_SUIVIS)]
 
-                installations_non_realisees = []
                 nb_realises_2026 = 0
-
                 for site in SITES_SUIVIS:
                     for ins in INSTALLATIONS_SUIVIES:
                         attendu = nb_campagnes_attendues(ins)
-                        df_grp = df_2026[df_2026[col_ins_k[0]].astype(str).str.strip() == ins]
+                        df_grp = df_realises_2026[df_realises_2026[col_ins_k[0]].astype(str).str.strip() == ins]
                         if col_site_k:
                             df_grp = df_grp[df_grp[col_site_k[0]].astype(str).str.strip() == site]
-                        # Une "campagne" = une échéance théorique (date brute) distincte pour cette
-                        # installation sur ce site ; elle est considérée réalisée si au moins un
-                        # équipement de cette échéance a une date réelle renseignée.
-                        nb_campagnes_realisees = df_grp[df_grp["_date_reelle"].notna()]["_date_brute"].nunique()
-                        nb_realise = min(nb_campagnes_realisees, attendu)
-                        nb_realises_2026 += nb_realise
-                        if nb_realise < attendu:
-                            installations_non_realisees.append({
-                                "Site": site,
-                                "Installation": ins,
-                                "Réalisés": nb_realise,
-                                "Attendus": attendu,
-                                "Manquants": attendu - nb_realise
-                            })
+                        # Une "campagne" réalisée = une date réelle distincte (mois/échéance) pour cette
+                        # installation sur ce site, plafonnée au nombre de contrôles attendus par an.
+                        nb_campagnes_realisees = df_grp["_date_brute"].nunique() if not df_grp.empty else 0
+                        nb_realises_2026 += min(nb_campagnes_realisees, attendu)
 
                 nb_restants_2026 = nb_total_2026 - nb_realises_2026
                 taux1 = round(nb_realises_2026/nb_total_2026*100,1) if nb_total_2026>0 else 0
@@ -1669,7 +1659,7 @@ if acces_autorise:
 
 
                 kpi_data = {
-                    "kpi1": {"taux":taux1, "realises":nb_realises_2026, "restants":nb_restants_2026, "total":nb_total_2026, "manquants":installations_non_realisees},
+                    "kpi1": {"taux":taux1, "realises":nb_realises_2026, "restants":nb_restants_2026, "total":nb_total_2026},
                     "kpi2": {"taux":taux2, "respectes":nb_respectes, "non_respectes":nb_non_respectes, "total":nb_visites_realisees}
                 }
 
@@ -1705,19 +1695,6 @@ if acces_autorise:
                         st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% respectés ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
                     else:
                         st.info("Aucune visite réalisée à ce jour.")
-
-            # ---- Détail des installations pas encore réalisées pour 2026 ----
-            if kpi_data is not None and kpi_data["kpi1"]["manquants"]:
-                st.markdown("<br>",unsafe_allow_html=True)
-                st.markdown("<p style='font-weight:600;color:#1E293B;font-size:14px;'>⏳ Installations pas encore réalisées pour 2026</p>",unsafe_allow_html=True)
-                df_manquants = pd.DataFrame(kpi_data["kpi1"]["manquants"])
-                st.dataframe(df_manquants,column_config={
-                    "Site":st.column_config.TextColumn("Site"),
-                    "Installation":st.column_config.TextColumn("Installation"),
-                    "Réalisés":st.column_config.NumberColumn("Réalisés"),
-                    "Attendus":st.column_config.NumberColumn("Attendus"),
-                    "Manquants":st.column_config.NumberColumn("Manquants"),
-                },hide_index=True,use_container_width=True)
 
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
 
