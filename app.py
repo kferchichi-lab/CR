@@ -526,13 +526,21 @@ st.markdown("""<style>
         white-space:nowrap!important;
     }
     .stDownloadButton>button{
+        background-color:#16A34A!important;
+        color:white!important;
+        border-radius:8px!important;
+        border:none!important;
+        font-weight:600!important;
+    }
+    .stDownloadButton>button:hover{background-color:#15803D!important;}
+    button[kind="primary"]{
         background-color:#1E3A8A!important;
         color:white!important;
         border-radius:8px!important;
         border:none!important;
         font-weight:600!important;
     }
-    .stDownloadButton>button:hover{background-color:#1D4ED8!important;}
+    button[kind="primary"]:hover{background-color:#1D4ED8!important;}
 </style>""", unsafe_allow_html=True)
 
 # ==========================================
@@ -1455,7 +1463,13 @@ if acces_autorise:
             date_str = datetime.date.today().strftime('%d_%m_%Y')
 
             with col_sgb:
-                if st.button("Consulter le rapport — SGB", use_container_width=True, key="consult_sgb"):
+                st.markdown(
+                    "<div style='background:white;padding:16px 20px;border-radius:10px;"
+                    "box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:4px solid #1E3A8A;"
+                    "margin-bottom:10px;'>"
+                    "<span style='font-size:14px;font-weight:600;color:#1E293B;'>📑 Rapport d'inspection — SGB</span>"
+                    "</div>", unsafe_allow_html=True)
+                if st.button("👁️ Consulter le rapport", use_container_width=True, key="consult_sgb", type="primary"):
                     with st.spinner("Préparation du rapport SGB..."):
                         try:
                             st.session_state["pdf_sgb"] = generer_rapport_equipements_pdf(df_exig, "SGB")
@@ -1474,7 +1488,13 @@ if acces_autorise:
                     )
 
             with col_meg:
-                if st.button("Consulter le rapport — MEG", use_container_width=True, key="consult_meg"):
+                st.markdown(
+                    "<div style='background:white;padding:16px 20px;border-radius:10px;"
+                    "box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:4px solid #1E3A8A;"
+                    "margin-bottom:10px;'>"
+                    "<span style='font-size:14px;font-weight:600;color:#1E293B;'>📑 Rapport d'inspection — MEG</span>"
+                    "</div>", unsafe_allow_html=True)
+                if st.button("👁️ Consulter le rapport", use_container_width=True, key="consult_meg", type="primary"):
                     with st.spinner("Préparation du rapport MEG..."):
                         try:
                             st.session_state["pdf_meg"] = generer_rapport_equipements_pdf(df_exig, "MEG")
@@ -1863,7 +1883,13 @@ if acces_autorise:
             if kpi_data is None:
                 st.info("Le rapport PDF nécessite des données KPI disponibles (onglet « Rapports » non vide).")
             else:
-                if st.button("Consulter le rapport PDF", use_container_width=True, key="consult_kpi"):
+                st.markdown(
+                    "<div style='background:white;padding:16px 20px;border-radius:10px;"
+                    "box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:4px solid #1E3A8A;"
+                    "margin-bottom:10px;'>"
+                    "<span style='font-size:14px;font-weight:600;color:#1E293B;'>📑 Rapport PDF — Synthèse KPI</span>"
+                    "</div>", unsafe_allow_html=True)
+                if st.button("👁️ Consulter le rapport", use_container_width=True, key="consult_kpi", type="primary"):
                     with st.spinner("Préparation du rapport PDF..."):
                         try:
                             st.session_state["pdf_kpi"] = generer_rapport_kpi_pdf(
