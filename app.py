@@ -1684,7 +1684,9 @@ if acces_autorise:
 
 
                 # ---- KPI 2 : Taux de respect de délai de visite (écart ≤ 1 mois entre date planifiée et date de dernière visite) ----
-                df_realises_k = df_k[df_k["_date_reelle"].notna()].copy()
+                # On ne considère que les contrôles dont la visite a réellement eu lieu en 2026
+                # (certains contrôles réalisés figurent avec une date réelle en 2025 et ne doivent pas être comptés ici).
+                df_realises_k = df_k[df_k["_date_reelle"].notna() & (df_k["_date_reelle"].dt.year == 2026)].copy()
                 nb_visites_realisees = len(df_realises_k)
                 if nb_visites_realisees > 0:
                     df_realises_k["_ecart"] = (df_realises_k["_date_reelle"] - df_realises_k["_date_planifiee"]).dt.days.abs()
