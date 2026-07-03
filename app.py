@@ -1262,15 +1262,32 @@ if acces_autorise:
         with col_contrat:
             if lien_contrat and lien_contrat.lower() != "nan":
                 lien_dl = lien_telechargement_direct(lien_contrat)
+
                 st.markdown(
                     "<div style='background:white;padding:16px 20px;border-radius:10px;"
                     "box-shadow:0 2px 8px rgba(0,0,0,0.05);border-left:4px solid #1E3A8A;"
                     "display:flex;align-items:center;justify-content:space-between;'>"
                     "<span style='font-size:14px;font-weight:600;color:#1E293B;'>📑 Contrat d'abonnement 2026</span>"
-                    f"<a href='{lien_dl}' download target='_blank' rel='noopener' style='text-decoration:none;background:#1E3A8A;"
-                    "color:white;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;'>"
-                    "📥 Ouvrir / Télécharger</a>"
                     "</div>", unsafe_allow_html=True)
+
+                if st.button("👁️ Consulter le PDF", key="btn_consulter_contrat"):
+                    try:
+                        reponse = requests.get(lien_dl, timeout=20)
+                        reponse.raise_for_status()
+                        st.session_state["contrat_pdf_bytes"] = reponse.content
+                        st.session_state["afficher_contrat_pdf"] = True
+                    except Exception as e:
+                        st.error(f"Impossible de récupérer le PDF : {e}")
+
+                if st.session_state.get("afficher_contrat_pdf") and st.session_state.get("contrat_pdf_bytes"):
+                    afficher_apercu_pdf(st.session_state["contrat_pdf_bytes"])
+                    st.download_button(
+                        label="📥 Télécharger le contrat",
+                        data=st.session_state["contrat_pdf_bytes"],
+                        file_name="Contrat_abonnement_2026.pdf",
+                        mime="application/pdf",
+                        key="dl_contrat_pdf"
+                    )
             else:
                 st.info("Aucun contrat n'a encore été ajouté.")
 
