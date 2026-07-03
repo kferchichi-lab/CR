@@ -792,7 +792,6 @@ acces_autorise=(role=="Responsable" and password_correct) or (role=="Visiteur" a
 
 if not acces_autorise and role=="Visiteur":
     st.markdown("""<div style="background:white;padding:20px;border-radius:12px;border-left:5px solid #0EA5E9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);margin-bottom:20px;">
-        <h4 style="margin:0;color:#1E3A8A;">🔑 Accès sécurisé aux rapports de contrôle réglementaire</h4>
         <p style="color:#64748B;font-size:13px;">Veuillez renseigner votre adresse e-mail professionnelle pour consulter les rapports et les plannings du site.</p>
     </div>""",unsafe_allow_html=True)
     email_saisi=st.text_input("Adresse e-mail :",placeholder="exemple@domain.com")
