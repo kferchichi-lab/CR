@@ -949,7 +949,7 @@ if acces_autorise:
                 <div style="flex:1;height:8px;background:#E2E8F0;border-radius:4px;overflow:hidden;">
                     <div style="width:{pct_meg}%;height:100%;background:{couleur_meg};border-radius:4px;"></div>
                 </div>
-                <span style="font-size:11px;color:{couleur_meg};font-weight:700;white-space:nowrap;width:70px;text-align:right;">{nb_ctrl_site["MEG"]}/{TOTAL_CATEGORIES_PAR_SITE} ({pct_meg}%)</span>
+                <span style="font-size:11px;color:{couleur_meg};font-weight:700;white-space:nowrap;width:70px;text-align:right;">{nb_ctrl_site["MEG"]-1}/{TOTAL_CATEGORIES_PAR_SITE} ({pct_meg}%)</span>
             </div></div>""",unsafe_allow_html=True)
 
     st.markdown("<br>",unsafe_allow_html=True)
