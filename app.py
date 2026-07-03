@@ -796,6 +796,7 @@ if not acces_autorise and role=="Visiteur":
         <p style="color:#64748B;font-size:13px;">Veuillez renseigner votre adresse e-mail professionnelle pour consulter les rapports et les plannings du site.</p>
     </div>""",unsafe_allow_html=True)
     email_saisi=st.text_input("Adresse e-mail :",placeholder="exemple@domain.com")
+    <p style="color:#64748B;font-size:13px;">Veuillez renseigner votre adresse e-mail professionnelle pour consulter les rapports et les plannings du site.</p>
     if st.button("Valider l'accès",type="primary"):
         if format_email_valide(email_saisi):
             st.session_state.email_visiteur=email_saisi
