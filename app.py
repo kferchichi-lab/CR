@@ -912,6 +912,10 @@ if acces_autorise:
         if not df_f.empty:
             col_reelle_doc=[c for c in df_f.columns if "reelle" in c.lower() or "réelle" in c.lower()]
             if col_reelle_doc: df_f=df_f.drop(columns=col_reelle_doc)
+            col_planifiee_doc=[c for c in df_f.columns if "planifi" in c.lower()]
+            if col_planifiee_doc: df_f=df_f.drop(columns=col_planifiee_doc)
+            col_prochaine_doc=[c for c in df_f.columns if "prochaine" in c.lower()]
+            if col_prochaine_doc: df_f=df_f.drop(columns=col_prochaine_doc)
             st.dataframe(df_f,column_config={
                 (col_lien[0] if col_lien else "Lien PDF"):st.column_config.LinkColumn("Action",display_text="Voir le rapport"),
                 (col_ex[0]   if col_ex   else "Année"):st.column_config.NumberColumn("Année",format="%d"),
