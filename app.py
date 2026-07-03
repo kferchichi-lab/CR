@@ -482,6 +482,22 @@ st.markdown("""<style>
     [data-testid="stForm"],.stCornerRadius{background-color:#FFFFFF!important;border:1px solid #E2E8F0!important;border-radius:12px!important;}
     .stButton>button{background-color:#1E3A8A!important;color:white!important;border-radius:8px!important;border:none!important;font-weight:500!important;padding:10px 24px!important;}
 
+    /* Champ e-mail (page de connexion visiteur) : fond gris, coins arrondis, style aligné sur la maquette */
+    div[data-testid="stTextInput"] input{
+        background-color:#F1F5F9!important;
+        border:1px solid #E2E8F0!important;
+        border-radius:8px!important;
+        padding:12px 16px!important;
+        font-size:14px!important;
+        color:#334155!important;
+    }
+    div[data-testid="stTextInput"] input:focus{
+        border-color:#0EA5E9!important;
+        box-shadow:0 0 0 3px rgba(14,165,233,0.12)!important;
+        background-color:#FFFFFF!important;
+    }
+    div[data-testid="stTextInput"] input::placeholder{color:#94A3B8!important;}
+
     /* === FIX ROBUSTE : empêche les boutons de s'écraser/se casser verticalement ===
        Cause réelle : les colonnes Streamlit rétrécissent (flex-shrink) au lieu de
        passer à la ligne quand il n'y a pas assez de place horizontale.
@@ -791,10 +807,11 @@ def format_email_valide(email):
 acces_autorise=(role=="Responsable" and password_correct) or (role=="Visiteur" and st.session_state.email_visiteur)
 
 if not acces_autorise and role=="Visiteur":
-    st.markdown("""<div style="background:white;padding:20px;border-radius:12px;border-left:5px solid #0EA5E9;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);margin-bottom:20px;">
-        <p style="color:#64748B;font-size:13px;">Veuillez renseigner votre adresse e-mail professionnelle pour consulter les rapports et les plannings du site.</p>
+    st.markdown("""<div style="margin-bottom:14px;">
+        <p style="color:#0F172A;font-size:15px;font-weight:700;margin:0 0 6px 0;">Adresse e-mail :</p>
+        <p style="color:#64748B;font-size:13.5px;margin:0;line-height:1.5;">Veuillez renseigner votre adresse e-mail professionnelle pour consulter les rapports et les plannings du site.</p>
     </div>""",unsafe_allow_html=True)
-    email_saisi=st.text_input("Adresse e-mail :",placeholder="exemple@domain.com")
+    email_saisi=st.text_input("Adresse e-mail :",placeholder="exemple@domain.com",label_visibility="collapsed")
     if st.button("Valider l'accès",type="primary"):
         if format_email_valide(email_saisi):
             st.session_state.email_visiteur=email_saisi
