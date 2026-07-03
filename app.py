@@ -895,23 +895,39 @@ if acces_autorise:
     col_label_hdr  = [c for c in df_rapports.columns if "equip" in c.lower() or "label" in c.lower() or "nom" in c.lower()]
     col_date_hdr   = [c for c in df_rapports.columns if "date" in c.lower() and "reelle" not in c.lower() and "réelle" not in c.lower() and "prochaine" not in c.lower() and "planifi" not in c.lower()]
 
-    nb_total_controles = 0
-    nb_realises_2026_hdr = 0
+    # ---- Contrôles 2026 réalisés PAR SITE (SGB / MEG), PAR CATÉGORIE d'installation (et non par équipement) ----
+    # Périodicité : Installations électriques = 2 campagnes/an, les 4 autres catégories = 1 campagne/an
+    # => 2 + 1 + 1 + 1 + 1 = 6 campagnes attendues par site sur l'année 2026
+    def _nb_campagnes_attendues_hdr(installation):
+        return round(12 / PERIODICITE.get(installation, 12))
+
+    TOTAL_CATEGORIES_PAR_SITE = sum(_nb_campagnes_attendues_hdr(ins) for ins in PERIODICITE.keys())  # = 6
+
+    nb_ctrl_site = {"SGB": 0, "MEG": 0}
     if not df_rapports.empty and col_ins_hdr and col_date_hdr:
         df_hdr = df_rapports.copy()
         df_hdr["_date_brute"]  = pd.to_datetime(df_hdr[col_date_hdr[0]], dayfirst=True, errors='coerce')
         df_hdr["_date_reelle"] = pd.to_datetime(df_hdr[col_reelle_hdr[0]], dayfirst=True, errors='coerce') if col_reelle_hdr else pd.NaT
         df_hdr = df_hdr.dropna(subset=["_date_brute"])
-        cles_hdr=[]
-        if col_site_hdr:  cles_hdr.append(col_site_hdr[0])
-        cles_hdr.append(col_ins_hdr[0])
-        if col_label_hdr: cles_hdr.append(col_label_hdr[0])
-        df_hdr = df_hdr.sort_values("_date_brute", ascending=True).drop_duplicates(subset=cles_hdr, keep="last")
-        nb_total_controles   = int(df_hdr["_date_reelle"].notna().sum())
-        nb_realises_2026_hdr = int((df_hdr["_date_reelle"].notna() & (df_hdr["_date_reelle"].dt.year == 2026)).sum())
+        df_realises_hdr = df_hdr[df_hdr["_date_reelle"].notna() & (df_hdr["_date_reelle"].dt.year == 2026)]
+        if col_site_hdr and col_ins_hdr:
+            for site_h in ("SGB", "MEG"):
+                df_site_h = df_realises_hdr[df_realises_hdr[col_site_hdr[0]].astype(str).str.strip().str.upper() == site_h]
+                total_site = 0
+                for ins_h in PERIODICITE.keys():
+                    attendu_h = _nb_campagnes_attendues_hdr(ins_h)
+                    df_grp_h  = df_site_h[df_site_h[col_ins_hdr[0]].astype(str).str.strip() == ins_h]
+                    nb_camp_h = df_grp_h["_date_brute"].nunique() if not df_grp_h.empty else 0
+                    total_site += min(nb_camp_h, attendu_h)
+                nb_ctrl_site[site_h] = total_site
 
-    pct_2026 = round(nb_realises_2026_hdr/nb_total_controles*100) if nb_total_controles>0 else 0
-    couleur_pct = "#10B981" if pct_2026>=80 else "#F97316" if pct_2026>=50 else "#EF4444"
+    def _pct_et_couleur(nb, total):
+        pct = round(nb/total*100) if total>0 else 0
+        couleur = "#10B981" if pct>=80 else "#F97316" if pct>=50 else "#EF4444"
+        return pct, couleur
+
+    pct_sgb, couleur_sgb = _pct_et_couleur(nb_ctrl_site["SGB"], TOTAL_CATEGORIES_PAR_SITE)
+    pct_meg, couleur_meg = _pct_et_couleur(nb_ctrl_site["MEG"], TOTAL_CATEGORIES_PAR_SITE)
 
     k1,k2=st.columns(2)
     with k1:
@@ -919,14 +935,21 @@ if acces_autorise:
             <p style="margin:0;font-size:12px;color:#64748B;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Total Rapports Archivés</p>
             <p style="margin:8px 0 0 0;font-size:34px;color:#0F172A;font-weight:700;line-height:1;">{val_total}</p></div>""",unsafe_allow_html=True)
     with k2:
-        st.markdown(f"""<div style="background:white;padding:22px;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);border-left:5px solid #0EA5E9;height:118px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;">
+        st.markdown(f"""<div style="background:white;padding:22px;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);border-left:5px solid #0EA5E9;height:118px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:8px;">
             <p style="margin:0;font-size:12px;color:#64748B;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Contrôles Planifiés 2026</p>
-            <p style="margin:8px 0 0 0;font-size:34px;color:#0F172A;font-weight:700;line-height:1;">{nb_realises_2026_hdr}</p>
-            <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:#334155;font-weight:700;width:32px;flex-shrink:0;">SGB</span>
                 <div style="flex:1;height:8px;background:#E2E8F0;border-radius:4px;overflow:hidden;">
-                    <div style="width:{pct_2026}%;height:100%;background:{couleur_pct};border-radius:4px;"></div>
+                    <div style="width:{pct_sgb}%;height:100%;background:{couleur_sgb};border-radius:4px;"></div>
                 </div>
-                <span style="font-size:12px;color:{couleur_pct};font-weight:700;white-space:nowrap;">{pct_2026}%</span>
+                <span style="font-size:11px;color:{couleur_sgb};font-weight:700;white-space:nowrap;width:70px;text-align:right;">{nb_ctrl_site["SGB"]}/{TOTAL_CATEGORIES_PAR_SITE} ({pct_sgb}%)</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:#334155;font-weight:700;width:32px;flex-shrink:0;">MEG</span>
+                <div style="flex:1;height:8px;background:#E2E8F0;border-radius:4px;overflow:hidden;">
+                    <div style="width:{pct_meg}%;height:100%;background:{couleur_meg};border-radius:4px;"></div>
+                </div>
+                <span style="font-size:11px;color:{couleur_meg};font-weight:700;white-space:nowrap;width:70px;text-align:right;">{nb_ctrl_site["MEG"]}/{TOTAL_CATEGORIES_PAR_SITE} ({pct_meg}%)</span>
             </div></div>""",unsafe_allow_html=True)
 
     st.markdown("<br>",unsafe_allow_html=True)
