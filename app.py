@@ -959,10 +959,11 @@ if acces_autorise:
 
         if not df_rapports.empty:
             col_ins_r  =[c for c in df_rapports.columns if "ins" in c.lower()]
-            col_date_r =[c for c in df_rapports.columns if "date" in c.lower()]
+            col_date_r =[c for c in df_rapports.columns if "date" in c.lower() and "reelle" not in c.lower() and "réelle" not in c.lower() and "prochaine" not in c.lower()]
             col_site_r =[c for c in df_rapports.columns if "site" in c.lower()]
             col_label_r=[c for c in df_rapports.columns if "equip" in c.lower() or "label" in c.lower() or "nom" in c.lower()]
             col_reelle =[c for c in df_rapports.columns if "reelle" in c.lower() or "réelle" in c.lower()]
+            col_prochaine_r=[c for c in df_rapports.columns if "prochaine" in c.lower()]
 
             if col_ins_r and col_date_r:
                 df_ech=df_rapports.copy()
@@ -975,7 +976,12 @@ if acces_autorise:
                 else:
                     df_ech["_date_reelle"]=pd.NaT
 
-                # Date de référence = réelle si dispo, sinon planifiée
+                if col_prochaine_r:
+                    df_ech["_prochaine_manuelle"]=pd.to_datetime(df_ech[col_prochaine_r[0]],dayfirst=True,errors='coerce')
+                else:
+                    df_ech["_prochaine_manuelle"]=pd.NaT
+
+                # Date de dernière visite = date réelle si dispo, sinon date planifiée initiale
                 df_ech["_date"]=df_ech["_date_reelle"].combine_first(df_ech["_date_brute"])
                 df_ech=df_ech.dropna(subset=["_date"])
 
@@ -990,6 +996,10 @@ if acces_autorise:
                 today_dt=pd.Timestamp.today().normalize()
 
                 def calc_prochaine(row):
+                    # Priorité à une échéance saisie manuellement par le responsable,
+                    # sinon calcul automatique selon la périodicité de l'installation
+                    if pd.notna(row["_prochaine_manuelle"]):
+                        return row["_prochaine_manuelle"]
                     mois=PERIODICITE.get(str(row[col_ins_r[0]]).strip(),12)
                     return row["_date"]+pd.DateOffset(months=mois)
 
@@ -998,13 +1008,10 @@ if acces_autorise:
                 df_ech["Statut"]=df_ech["Jours restants"].apply(
                     lambda j:"⚠️ Dépassé" if j<0 else "🔴 Urgent" if j<30 else "🟡 Proche" if j<90 else "🟢 OK")
 
-                # Colonne unifiée pour visiteurs
-                df_ech["Date du contrôle"]=df_ech["_date_reelle"].combine_first(df_ech["_date_brute"])
-
                 cols_affich=[]
                 if col_site_r:  cols_affich.append(col_site_r[0])
                 if col_label_r: cols_affich.append(col_label_r[0])
-                cols_affich+=[col_ins_r[0],"_date_brute","_date_reelle","Date du contrôle","Prochaine échéance","Jours restants","Statut","_ligne_sheet"]
+                cols_affich+=[col_ins_r[0],"_date_reelle","Prochaine échéance","Jours restants","Statut","_ligne_sheet"]
                 df_show=df_ech[cols_affich].sort_values("Prochaine échéance")
 
                 # ---- APPLICATION DES FILTRES ----
@@ -1045,40 +1052,46 @@ if acces_autorise:
                 # ---- COLONNE GAUCHE : TABLEAU ----
                 with left_col:
                     if role!="Responsable" or not password_correct:
-                        # Visiteur : une seule colonne de date
+                        # Visiteur : lecture seule
                         cols_visiteur=[]
                         if col_site_r:  cols_visiteur.append(col_site_r[0])
                         if col_label_r: cols_visiteur.append(col_label_r[0])
-                        cols_visiteur+=[col_ins_r[0],"Date du contrôle","Prochaine échéance","Jours restants","Statut"]
+                        cols_visiteur+=[col_ins_r[0],"_date_reelle","Prochaine échéance","Jours restants","Statut"]
                         st.dataframe(df_show_filtre[cols_visiteur],column_config={
-                            "Date du contrôle":   st.column_config.DateColumn("📅 Date du contrôle",format="DD/MM/YYYY"),
+                            "_date_reelle":       st.column_config.DateColumn("📅 Date de dernière visite",format="DD/MM/YYYY"),
                             "Prochaine échéance": st.column_config.DateColumn("⏭️ Prochaine échéance",format="DD/MM/YYYY"),
                             "Jours restants":     st.column_config.NumberColumn("Jours restants",format="%d j"),
                         },hide_index=True,use_container_width=True)
                     else:
-                        # Responsable : deux dates + édition
+                        # Responsable : édition de la date de dernière visite ET de la prochaine échéance
                         st.markdown("""<div style='background:#EFF6FF;border-left:4px solid #2a78d6;padding:10px 14px;border-radius:6px;margin-bottom:10px;'>
-                            <p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>✏️ Mode responsable — Modifiez la colonne <b>Date réelle visite</b> puis sauvegardez.</p>
+                            <p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>✏️ Mode responsable — Modifiez la <b>Date de dernière visite</b> et/ou la <b>Prochaine échéance</b> puis sauvegardez. Par défaut, la prochaine échéance est calculée automatiquement selon la périodicité ; toute date saisie ici la remplace.</p>
                         </div>""",unsafe_allow_html=True)
                         cols_resp=[]
                         if col_site_r:  cols_resp.append(col_site_r[0])
                         if col_label_r: cols_resp.append(col_label_r[0])
-                        cols_resp+=[col_ins_r[0],"_date_brute","_date_reelle","Prochaine échéance","Jours restants","Statut","_ligne_sheet"]
+                        cols_resp+=[col_ins_r[0],"_date_reelle","Prochaine échéance","Jours restants","Statut","_ligne_sheet"]
                         df_editable=df_show_filtre[cols_resp].copy()
                         df_editable["_date_reelle"]=pd.to_datetime(df_editable["_date_reelle"],errors='coerce')
+                        df_editable["Prochaine échéance"]=pd.to_datetime(df_editable["Prochaine échéance"],errors='coerce')
                         edited_df=st.data_editor(df_editable,column_config={
-                            "_date_brute":        st.column_config.DateColumn("📅 Date planifiée",format="DD/MM/YYYY"),
-                            "_date_reelle":       st.column_config.DateColumn("✅ Date réelle visite",format="DD/MM/YYYY",help="Saisissez ici la date réelle du contrôle effectué"),
-                            "Prochaine échéance": st.column_config.DateColumn("⏭️ Prochaine échéance",format="DD/MM/YYYY"),
+                            "_date_reelle":       st.column_config.DateColumn("✅ Date de dernière visite",format="DD/MM/YYYY",help="Saisissez ici la date réelle du dernier contrôle effectué"),
+                            "Prochaine échéance": st.column_config.DateColumn("⏭️ Prochaine échéance",format="DD/MM/YYYY",help="Calculée automatiquement, modifiable si besoin"),
                             "Jours restants":     st.column_config.NumberColumn("Jours restants",format="%d j"),
                             "_ligne_sheet":       None,
-                        },disabled=[c for c in df_editable.columns if c!="_date_reelle"],hide_index=True,use_container_width=True,key="editor_dates_reelles")
+                        },disabled=[c for c in df_editable.columns if c not in ("_date_reelle","Prochaine échéance")],hide_index=True,use_container_width=True,key="editor_dates_reelles")
 
-                        if st.button("💾 Sauvegarder les dates réelles",type="primary"):
+                        if not col_prochaine_r:
+                            st.caption("ℹ️ Pour que la « Prochaine échéance » modifiée soit conservée après actualisation, ajoutez une colonne « Prochaine_echeance » dans l'onglet « Rapports » du Google Sheet.")
+
+                        if st.button("💾 Sauvegarder les modifications",type="primary"):
                             with st.spinner("Mise à jour dans Google Sheets..."):
                                 nb_maj=0
                                 erreurs=[]
                                 for idx,row_edit in edited_df.iterrows():
+                                    num_ligne_sheet=int(row_edit["_ligne_sheet"])
+
+                                    # -- Date de dernière visite --
                                     nouvelle_date=row_edit["_date_reelle"]
                                     ancienne_date=df_editable.loc[idx,"_date_reelle"]
                                     dates_diff=False
@@ -1086,7 +1099,6 @@ if acces_autorise:
                                     elif pd.isna(nouvelle_date)!=pd.isna(ancienne_date): dates_diff=True
                                     elif not pd.isna(nouvelle_date) and nouvelle_date!=ancienne_date: dates_diff=True
                                     if dates_diff and not pd.isna(nouvelle_date):
-                                        num_ligne_sheet=int(row_edit["_ligne_sheet"])
                                         if col_reelle:
                                             num_col=df_rapports.columns.tolist().index(col_reelle[0])+1
                                         else:
@@ -1098,8 +1110,26 @@ if acces_autorise:
                                             nb_maj+=1
                                         else:
                                             erreurs.append(f"Ligne {num_ligne_sheet}: {msg}")
+
+                                    # -- Prochaine échéance (surcharge manuelle) --
+                                    if col_prochaine_r:
+                                        nouvelle_prochaine=row_edit["Prochaine échéance"]
+                                        ancienne_prochaine=df_editable.loc[idx,"Prochaine échéance"]
+                                        prochaine_diff=False
+                                        if pd.isna(nouvelle_prochaine) and pd.isna(ancienne_prochaine): prochaine_diff=False
+                                        elif pd.isna(nouvelle_prochaine)!=pd.isna(ancienne_prochaine): prochaine_diff=True
+                                        elif not pd.isna(nouvelle_prochaine) and nouvelle_prochaine!=ancienne_prochaine: prochaine_diff=True
+                                        if prochaine_diff and not pd.isna(nouvelle_prochaine):
+                                            num_col_p=df_rapports.columns.tolist().index(col_prochaine_r[0])+1
+                                            lettre_col_p=chr(64+num_col_p)
+                                            prochaine_str=nouvelle_prochaine.strftime("%d/%m/%Y")
+                                            ok_p, msg_p = sheets_ecrire_cellule_v2("Rapports",f"{lettre_col_p}{num_ligne_sheet}",prochaine_str)
+                                            if ok_p:
+                                                nb_maj+=1
+                                            else:
+                                                erreurs.append(f"Ligne {num_ligne_sheet} (prochaine échéance): {msg_p}")
                             if nb_maj>0:
-                                st.success(f"✅ {nb_maj} date(s) enregistrée(s) !")
+                                st.success(f"✅ {nb_maj} modification(s) enregistrée(s) !")
                             if erreurs:
                                 st.error("❌ Erreurs : " + " | ".join(erreurs))
                             if nb_maj>0 or erreurs:
