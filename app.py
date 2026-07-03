@@ -2090,7 +2090,7 @@ if acces_autorise:
                         st.info(f"Aucune donnée {site}.")
                         return
                     fig = px.pie(d,values="Nombre",names="Nature",hole=0.6,color="Nature",color_discrete_map=color_map)
-                    fig.update_traces(textposition='inside',textinfo='percent+label')
+                    fig.update_traces(textposition='inside',textinfo='percent')
                     fig.update_layout(title=titre,title_x=0.5,margin=dict(t=40,b=10,l=10,r=10),height=280,
                                        paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',
                                        legend=dict(font=dict(size=9)))
@@ -2124,13 +2124,14 @@ if acces_autorise:
                     st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
 
                 if {"Nature","Pilote","Site"}.issubset(df_nature_f.columns):
-                    st.caption("ℹ️ Un même point peut impliquer plusieurs pilotes (ex : BT + Maintenance) : chaque pilote est donc compté individuellement, le total des % peut dépasser 100%.")
+                    
+                    
                     g1,g2 = st.columns(2)
-                    with g1: _pie_nature_site(df_nature_f,"SGB",color_map_nat,"SGB — % par nature")
-                    with g2: _bar_pilote_site(df_nature_f,"SGB",color_map_pil,"SGB — % par pilote")
+                    with g1: _pie_nature_site(df_nature_f,"MEG",color_map_nat,"MEG — % par nature")
+                    with g2: _bar_pilote_site(df_nature_f,"MEG",color_map_pil,"MEG — % par pilote")
                     g3,g4 = st.columns(2)
-                    with g3: _pie_nature_site(df_nature_f,"MEG",color_map_nat,"MEG — % par nature")
-                    with g4: _bar_pilote_site(df_nature_f,"MEG",color_map_pil,"MEG — % par pilote")
+                    with g3: _pie_nature_site(df_nature_f,"SGB",color_map_nat,"SGB — % par nature")
+                    with g4: _bar_pilote_site(df_nature_f,"SGB",color_map_pil,"SGB — % par pilote")
                 else:
                     st.info("Aucune donnée à afficher pour les graphes.")
 
