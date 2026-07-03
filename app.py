@@ -806,6 +806,14 @@ def format_email_valide(email):
 
 acces_autorise=(role=="Responsable" and password_correct) or (role=="Visiteur" and st.session_state.email_visiteur)
 
+# ==========================================
+# EN-TÊTE (toujours affiché en premier, connecté ou non)
+# ==========================================
+st.markdown("""<div class="app-header-block" style="width:100%;text-align:center;margin:10px auto 35px auto;">
+    <h1 style="text-align:center;font-size:2.6rem;font-weight:800;color:#0F172A;margin:0 0 6px 0;letter-spacing:-1px;line-height:1.2;">Tableau de Bord Réglementaire</h1>
+    <p style="text-align:center;font-size:1.05rem;color:#64748B;margin:0 auto;font-weight:400;line-height:1.5;max-width:800px;">L'amélioration continue.. Notre trajectoire..</p>
+</div>""",unsafe_allow_html=True)
+
 if not acces_autorise and role=="Visiteur":
     st.markdown("""<div style="margin-bottom:14px;">
         <p style="color:#0F172A;font-size:15px;font-weight:700;margin:0 0 6px 0;">Adresse e-mail :</p>
@@ -841,15 +849,6 @@ if acces_autorise and email_actif:
         mettre_a_jour_presence(email_actif)
         st.session_state.last_heartbeat=now_ts
     st.markdown("""<script>setTimeout(function(){window.parent.document.querySelector('[data-testid="stApp"]').click();},30000);</script>""",unsafe_allow_html=True)
-
-# ==========================================
-# EN-TÊTE
-# ==========================================
-st.markdown("""<style>.stMarkdown div p,.stMarkdown div h1{text-align:center!important;}</style>""",unsafe_allow_html=True)
-st.markdown("""<div style="width:100%;text-align:center;margin:10px auto 35px auto;">
-    <h1 style="text-align:center;font-size:2.6rem;font-weight:800;color:#0F172A;margin:0 0 6px 0;letter-spacing:-1px;line-height:1.2;">Tableau de Bord Réglementaire</h1>
-    <p style="text-align:center;font-size:1.05rem;color:#64748B;margin:0 auto;font-weight:400;line-height:1.5;max-width:800px;">L'amélioration continue.. Notre trajectoire..</p>
-</div>""",unsafe_allow_html=True)
 
 # ==========================================
 # CONTENU PRINCIPAL
