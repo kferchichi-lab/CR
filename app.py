@@ -2075,29 +2075,62 @@ if acces_autorise:
                 palette_nat = px.colors.qualitative.Set2
                 color_map_nat = {n: palette_nat[i % len(palette_nat)] for i,n in enumerate(all_natures)}
 
-                all_pilotes = sorted(set(v[1] for v in NATURE_PILOTE.values()))
+                # Les pilotes sont parfois combinés (ex: "BT + Maintenance", "BT + HSE + RH + DG").
+                # On isole chaque entité (Maintenance, BT, HSE, RH, DG, DMTN, Chef service BT, ...)
+                # pour calculer un % propre à chacune, même quand elle est partagée entre plusieurs natures.
+                entites_atomiques = sorted(set(
+                    e.strip() for v in NATURE_PILOTE.values() for e in v[1].split("+") if e.strip()
+                ))
                 palette_pil = px.colors.qualitative.Set1
-                color_map_pil = {p: palette_pil[i % len(palette_pil)] for i,p in enumerate(all_pilotes)}
+                color_map_pil = {p: palette_pil[i % len(palette_pil)] for i,p in enumerate(entites_atomiques)}
 
-                def _pie_site_champ(df_src, site, champ, color_map, titre):
-                    d = df_src[df_src["Site"]==site].groupby(champ)["Nombre"].sum().reset_index()
+                def _pie_nature_site(df_src, site, color_map, titre):
+                    d = df_src[df_src["Site"]==site].groupby("Nature")["Nombre"].sum().reset_index()
                     if d.empty:
                         st.info(f"Aucune donnée {site}.")
                         return
-                    fig = px.pie(d,values="Nombre",names=champ,hole=0.6,color=champ,color_discrete_map=color_map)
+                    fig = px.pie(d,values="Nombre",names="Nature",hole=0.6,color="Nature",color_discrete_map=color_map)
                     fig.update_traces(textposition='inside',textinfo='percent+label')
                     fig.update_layout(title=titre,title_x=0.5,margin=dict(t=40,b=10,l=10,r=10),height=280,
                                        paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',
                                        legend=dict(font=dict(size=9)))
                     st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
 
+                def _bar_pilote_site(df_src, site, color_map, titre):
+                    d = df_src[df_src["Site"]==site]
+                    if d.empty:
+                        st.info(f"Aucune donnée {site}.")
+                        return
+                    total = d["Nombre"].sum()
+                    compte = {}
+                    for _,row in d.iterrows():
+                        for e in str(row["Pilote"]).split("+"):
+                            e = e.strip()
+                            if not e: continue
+                            compte[e] = compte.get(e,0) + row["Nombre"]
+                    if not compte or total==0:
+                        st.info(f"Aucune donnée {site}.")
+                        return
+                    dd = pd.DataFrame({"Pilote":list(compte.keys()),"Nombre":list(compte.values())})
+                    dd["Pourcentage"] = (dd["Nombre"]/total*100).round(1)
+                    dd = dd.sort_values("Pourcentage",ascending=True)
+                    fig = px.bar(dd,x="Pourcentage",y="Pilote",orientation="h",text="Pourcentage",
+                                 color="Pilote",color_discrete_map=color_map)
+                    fig.update_traces(texttemplate='%{text}%',textposition='outside',cliponaxis=False)
+                    fig.update_layout(title=titre,title_x=0.5,showlegend=False,
+                                       xaxis_title="% des points de réserve",yaxis_title="",
+                                       margin=dict(t=40,b=10,l=10,r=30),height=280,
+                                       paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
+
                 if {"Nature","Pilote","Site"}.issubset(df_nature_f.columns):
+                    st.caption("ℹ️ Un même point peut impliquer plusieurs pilotes (ex : BT + Maintenance) : chaque pilote est donc compté individuellement, le total des % peut dépasser 100%.")
                     g1,g2 = st.columns(2)
-                    with g1: _pie_site_champ(df_nature_f,"SGB","Nature",color_map_nat,"SGB — % par nature")
-                    with g2: _pie_site_champ(df_nature_f,"SGB","Pilote",color_map_pil,"SGB — % par pilote")
+                    with g1: _pie_nature_site(df_nature_f,"SGB",color_map_nat,"SGB — % par nature")
+                    with g2: _bar_pilote_site(df_nature_f,"SGB",color_map_pil,"SGB — % par pilote")
                     g3,g4 = st.columns(2)
-                    with g3: _pie_site_champ(df_nature_f,"MEG","Nature",color_map_nat,"MEG — % par nature")
-                    with g4: _pie_site_champ(df_nature_f,"MEG","Pilote",color_map_pil,"MEG — % par pilote")
+                    with g3: _pie_nature_site(df_nature_f,"MEG",color_map_nat,"MEG — % par nature")
+                    with g4: _bar_pilote_site(df_nature_f,"MEG",color_map_pil,"MEG — % par pilote")
                 else:
                     st.info("Aucune donnée à afficher pour les graphes.")
 
