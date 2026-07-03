@@ -744,6 +744,31 @@ def ajouter_point_reserve(site, installation, sous_eq, nombre):
     return sheets_append("PointsReserve", [site, installation, sous_eq, str(nombre)])
 
 
+# ==========================================
+# POINTS DE RÉSERVE PAR NATURE (onglet dédié "PointsReserveNature")
+# Table KPI : Site | Installation | Nombre de pts de réserve | Nature | Pilote
+# Le pilote est déduit automatiquement du code de la nature.
+# ==========================================
+NATURE_PILOTE = {
+    "T": ("Technique",      "Maintenance"),
+    "S": ("Sécurité",       "HSE"),
+    "E": ("Energétique",    "BT + Maintenance"),
+    "D": ("Documentation",  "BT + HSE"),
+    "O": ("Organisation",   "DMTN + Chef service BT"),
+    "R": ("Règlementation", "BT + HSE + RH + DG"),
+}
+
+def lire_points_reserve_nature():
+    """Lit l'onglet PointsReserveNature : Site | Installation | Nombre | Nature | Pilote."""
+    return sheets_lire("PointsReserveNature", "A:E")
+
+
+def ajouter_point_reserve_nature(site, installation, nombre, code_nature):
+    """Ajoute une ligne dans l'onglet PointsReserveNature. Le pilote est calculé depuis le code de la nature."""
+    nature_nom, pilote = NATURE_PILOTE[code_nature]
+    return sheets_append("PointsReserveNature", [site, installation, str(nombre), nature_nom, pilote])
+
+
 def supprimer_ligne_generique(onglet, num_ligne_sheet, nb_colonnes):
     """Vide une ligne (remplace par des cellules vides) dans un onglet donné, sur nb_colonnes colonnes (A..)."""
     token = obtenir_access_token()
@@ -783,7 +808,7 @@ with st.sidebar:
         <p style="font-size:0.85rem;color:#64748B;margin:0;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;">Direction Maintenance & TN</p>
     </div>""",unsafe_allow_html=True)
     st.divider()
-    st.markdown("<p style='font-weight:600;color:#334155;margin-bottom:0;'>Espace sécurisé</p>",unsafe_allow_html=True)
+    st.markdown("<p style='font-weight:600;color:#334155;margin-bottom:0;'>🔐 Espace sécurisé</p>",unsafe_allow_html=True)
     role=st.selectbox("Profil :",["Visiteur","Responsable"],label_visibility="collapsed")
     password_correct=False
     if role=="Responsable":
@@ -817,7 +842,7 @@ st.markdown("""<div class="app-header-block" style="width:100%;text-align:center
 if not acces_autorise and role=="Visiteur":
     st.markdown("""<div style="margin-bottom:14px;">
         <p style="color:#0F172A;font-size:15px;font-weight:700;margin:0 0 6px 0;">Adresse e-mail :</p>
-        <p style="color:#64748B;font-size:13.5px;margin:0;line-height:1.5;">Veuillez renseigner votre adresse e-mail.</p>
+        <p style="color:#64748B;font-size:13.5px;margin:0;line-height:1.5;">Veuillez renseigner votre adresse e-mail professionnelle pour consulter les rapports et les plannings du site.</p>
     </div>""",unsafe_allow_html=True)
     email_saisi=st.text_input("Adresse e-mail :",placeholder="exemple@domain.com",label_visibility="collapsed")
     if st.button("Valider l'accès",type="primary"):
@@ -1981,6 +2006,110 @@ if acces_autorise:
                             if st.button("🗑️",key=f"del_res_{orig_idx}"):
                                 num_ligne_sheet = orig_idx+2
                                 if supprimer_ligne_generique("PointsReserve",num_ligne_sheet,4):
+                                    st.success("Supprimé !")
+                                    st.cache_data.clear()
+                                    st.rerun()
+                                else:
+                                    st.error("Erreur lors de la suppression.")
+
+            # ================= POINTS DE RÉSERVE PAR NATURE =================
+            st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>🧭 Points de réserve par nature</p>",unsafe_allow_html=True)
+
+            with st.spinner("Chargement des points de réserve par nature..."):
+                df_nature = lire_points_reserve_nature()
+
+            with st.expander("➕ Ajouter une ligne"):
+                nt1,nt2,nt3,nt4 = st.columns([1,1.5,1,1.5])
+                with nt1:
+                    nat_site = st.selectbox("Site",["SGB","MEG"],key="nat_site_new")
+                with nt2:
+                    nat_ins = st.selectbox("Installation",list(PERIODICITE.keys()),key="nat_ins_new")
+                with nt3:
+                    nat_nb = st.number_input("Nb points",min_value=1,value=1,key="nat_nb_new")
+                with nt4:
+                    nat_code = st.selectbox("Nature",list(NATURE_PILOTE.keys()),
+                                             format_func=lambda c: f"{c} — {NATURE_PILOTE[c][0]}",key="nat_code_new")
+                nat_pilote_auto = NATURE_PILOTE[nat_code][1]
+                st.markdown(
+                    f"<p style='font-size:12.5px;color:#64748B;margin-top:-4px;'>Pilote assigné automatiquement : "
+                    f"<b style='color:#1E3A8A;'>{nat_pilote_auto}</b></p>",unsafe_allow_html=True)
+                if st.button("💾 Enregistrer",key="btn_add_nature"):
+                    ok,err = ajouter_point_reserve_nature(nat_site,nat_ins,nat_nb,nat_code)
+                    if ok:
+                        st.success("✅ Ligne ajoutée !")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error(f"Erreur : {err}")
+
+            if df_nature.empty:
+                st.info("Aucune donnée enregistrée. Utilisez le formulaire ci-dessus pour en ajouter.")
+            else:
+                if "Nombre" in df_nature.columns:
+                    df_nature["Nombre"] = pd.to_numeric(df_nature["Nombre"],errors="coerce").fillna(0).astype(int)
+
+                with st.container(border=True):
+                    st.markdown("<p style='font-weight:600;color:#1E293B;margin:0 0 10px 0;font-size:13px;'>🔍 Filtrer</p>",unsafe_allow_html=True)
+                    fn1,fn2 = st.columns(2)
+                    sites_dispo_n = ["Tous"]+sorted(df_nature["Site"].dropna().unique().tolist()) if "Site" in df_nature.columns else ["Tous"]
+                    inss_dispo_n  = ["Tous"]+sorted(df_nature["Installation"].dropna().unique().tolist()) if "Installation" in df_nature.columns else ["Tous"]
+                    with fn1: f_nat_site = st.selectbox("Site",sites_dispo_n,key="f_nat_site")
+                    with fn2: f_nat_ins  = st.selectbox("Installation",inss_dispo_n,key="f_nat_ins")
+
+                df_nature_f = df_nature.copy()
+                if f_nat_site!="Tous" and "Site" in df_nature_f.columns:
+                    df_nature_f = df_nature_f[df_nature_f["Site"]==f_nat_site]
+                if f_nat_ins!="Tous" and "Installation" in df_nature_f.columns:
+                    df_nature_f = df_nature_f[df_nature_f["Installation"]==f_nat_ins]
+
+                st.dataframe(df_nature_f.rename(columns={
+                    "Site":"Site","Installation":"Installation","Nombre":"Nbre pts de réserve","Nature":"Nature","Pilote":"Pilote"
+                }),hide_index=True,use_container_width=True)
+
+                st.markdown("<br>",unsafe_allow_html=True)
+                st.markdown("<p style='font-weight:700;font-size:14px;color:#0F172A;text-align:center;margin-bottom:10px;'>Répartition par site : Nature et Pilote</p>",unsafe_allow_html=True)
+
+                # --- Grille 2x2 : ligne 1 = SGB (Nature | Pilote), ligne 2 = MEG (Nature | Pilote) ---
+                all_natures = [v[0] for v in NATURE_PILOTE.values()]
+                palette_nat = px.colors.qualitative.Set2
+                color_map_nat = {n: palette_nat[i % len(palette_nat)] for i,n in enumerate(all_natures)}
+
+                all_pilotes = sorted(set(v[1] for v in NATURE_PILOTE.values()))
+                palette_pil = px.colors.qualitative.Set1
+                color_map_pil = {p: palette_pil[i % len(palette_pil)] for i,p in enumerate(all_pilotes)}
+
+                def _pie_site_champ(df_src, site, champ, color_map, titre):
+                    d = df_src[df_src["Site"]==site].groupby(champ)["Nombre"].sum().reset_index()
+                    if d.empty:
+                        st.info(f"Aucune donnée {site}.")
+                        return
+                    fig = px.pie(d,values="Nombre",names=champ,hole=0.6,color=champ,color_discrete_map=color_map)
+                    fig.update_traces(textposition='inside',textinfo='percent+label')
+                    fig.update_layout(title=titre,title_x=0.5,margin=dict(t=40,b=10,l=10,r=10),height=280,
+                                       paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',
+                                       legend=dict(font=dict(size=9)))
+                    st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
+
+                if {"Nature","Pilote","Site"}.issubset(df_nature_f.columns):
+                    g1,g2 = st.columns(2)
+                    with g1: _pie_site_champ(df_nature_f,"SGB","Nature",color_map_nat,"SGB — % par nature")
+                    with g2: _pie_site_champ(df_nature_f,"SGB","Pilote",color_map_pil,"SGB — % par pilote")
+                    g3,g4 = st.columns(2)
+                    with g3: _pie_site_champ(df_nature_f,"MEG","Nature",color_map_nat,"MEG — % par nature")
+                    with g4: _pie_site_champ(df_nature_f,"MEG","Pilote",color_map_pil,"MEG — % par pilote")
+                else:
+                    st.info("Aucune donnée à afficher pour les graphes.")
+
+                with st.expander("🗑️ Supprimer une ligne"):
+                    for orig_idx,row_n in df_nature.iterrows():
+                        dnx1,dnx2 = st.columns([5,1])
+                        with dnx1:
+                            st.write(f"{row_n.get('Site','')} — {row_n.get('Installation','')} — {row_n.get('Nombre',0)} pt(s) — {row_n.get('Nature','')} — {row_n.get('Pilote','')}")
+                        with dnx2:
+                            if st.button("🗑️",key=f"del_nat_{orig_idx}"):
+                                num_ligne_sheet = orig_idx+2
+                                if supprimer_ligne_generique("PointsReserveNature",num_ligne_sheet,5):
                                     st.success("Supprimé !")
                                     st.cache_data.clear()
                                     st.rerun()
