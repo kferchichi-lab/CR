@@ -783,7 +783,7 @@ with st.sidebar:
         <p style="font-size:0.85rem;color:#64748B;margin:0;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;">Direction Maintenance & TN</p>
     </div>""",unsafe_allow_html=True)
     st.divider()
-    st.markdown("<p style='font-weight:600;color:#334155;margin-bottom:0;'>🔐 Espace sécurisé</p>",unsafe_allow_html=True)
+    st.markdown("<p style='font-weight:600;color:#334155;margin-bottom:0;'>Espace sécurisé</p>",unsafe_allow_html=True)
     role=st.selectbox("Profil :",["Visiteur","Responsable"],label_visibility="collapsed")
     password_correct=False
     if role=="Responsable":
@@ -816,8 +816,6 @@ st.markdown("""<div class="app-header-block" style="width:100%;text-align:center
 
 if not acces_autorise and role=="Visiteur":
     st.markdown("""<div style="margin-bottom:14px;">
-    st.divider()
-    st.divider()
         <p style="color:#0F172A;font-size:15px;font-weight:700;margin:0 0 6px 0;">Adresse e-mail :</p>
         <p style="color:#64748B;font-size:13.5px;margin:0;line-height:1.5;">Veuillez renseigner votre adresse e-mail professionnelle pour consulter les rapports et les plannings du site.</p>
     </div>""",unsafe_allow_html=True)
