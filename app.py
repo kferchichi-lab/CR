@@ -837,7 +837,7 @@ acces_autorise=(role=="Responsable" and password_correct) or (role=="Visiteur" a
 # --> Renseignez ici le nom (ou le chemin) de votre fichier image PNG déjà importé
 MAINTENANCE_ICON_PATH = "unnamed.png"
 
-col_titre, col_icone = st.columns([5,1])
+col_titre, col_icone = st.columns([4,2])
 with col_titre:
     st.markdown("""<div class="app-header-block" style="width:100%;margin:10px auto 0 auto;">
     <h1 style="text-align:center;font-size:2.6rem;font-weight:800;color:#0F172A;margin:0 0 6px 0;letter-spacing:-1px;line-height:1.2;">Tableau de Bord Réglementaire</h1>
