@@ -817,7 +817,7 @@ st.markdown("""<div class="app-header-block" style="width:100%;text-align:center
 if not acces_autorise and role=="Visiteur":
     st.markdown("""<div style="margin-bottom:14px;">
         <p style="color:#0F172A;font-size:15px;font-weight:700;margin:0 0 6px 0;">Adresse e-mail :</p>
-        <p style="color:#64748B;font-size:13.5px;margin:0;line-height:1.5;">Veuillez renseigner votre adresse e-mail professionnelle pour consulter les rapports et les plannings du site.</p>
+        <p style="color:#64748B;font-size:13.5px;margin:0;line-height:1.5;">Veuillez renseigner votre adresse e-mail.</p>
     </div>""",unsafe_allow_html=True)
     email_saisi=st.text_input("Adresse e-mail :",placeholder="exemple@domain.com",label_visibility="collapsed")
     if st.button("Valider l'accès",type="primary"):
