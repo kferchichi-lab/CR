@@ -2226,15 +2226,13 @@ if acces_autorise:
                 color_map_pil_v = {p: palette_pil_v[i % len(palette_pil_v)] for i,p in enumerate(entites_atomiques_v)}
 
                 if {"Nature","Pilote","Site"}.issubset(df_nature_v.columns):
-                    st.caption("ℹ️ Un même point peut impliquer plusieurs pilotes (ex : BT + Maintenance) : chaque pilote est donc compté individuellement, le total des % peut dépasser 100%.")
-                    vg1,vg2 = st.columns(2)
                     with vg1:
                         dv = df_nature_v[df_nature_v["Site"]==site_choisi].groupby("Nature")["Nombre"].sum().reset_index()
                         if dv.empty:
                             st.info(f"Aucune donnée {site_choisi}.")
                         else:
                             figv1 = px.pie(dv,values="Nombre",names="Nature",hole=0.6,color="Nature",color_discrete_map=color_map_nat_v)
-                            figv1.update_traces(textposition='inside',textinfo='percent+label')
+                            figv1.update_traces(textposition='inside',textinfo='percent')
                             figv1.update_layout(title=f"{site_choisi} — % par nature",title_x=0.5,margin=dict(t=40,b=10,l=10,r=10),height=300,
                                                  paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',legend=dict(font=dict(size=9)))
                             st.plotly_chart(figv1,use_container_width=True,config={'displayModeBar':False})
