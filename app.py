@@ -1617,10 +1617,11 @@ if acces_autorise:
 
             # ---- Préparation des données de contrôle (même logique que l'onglet Planification) ----
             col_ins_k   = [c for c in df_rapports.columns if "ins" in c.lower()]
-            col_date_k  = [c for c in df_rapports.columns if "date" in c.lower()]
+            col_date_k  = [c for c in df_rapports.columns if "date" in c.lower() and "reelle" not in c.lower() and "réelle" not in c.lower() and "prochaine" not in c.lower() and "planifi" not in c.lower()]
             col_site_k  = [c for c in df_rapports.columns if "site" in c.lower()]
             col_label_k = [c for c in df_rapports.columns if "equip" in c.lower() or "label" in c.lower() or "nom" in c.lower()]
             col_reelle_k= [c for c in df_rapports.columns if "reelle" in c.lower() or "réelle" in c.lower()]
+            col_planifiee_k = [c for c in df_rapports.columns if "planifi" in c.lower()]
 
             if df_rapports.empty or not col_ins_k or not col_date_k:
                 st.info("Données insuffisantes dans l'onglet « Rapports » pour calculer les KPI.")
@@ -1629,6 +1630,13 @@ if acces_autorise:
                 df_k = df_rapports.copy()
                 df_k["_date_brute"]  = pd.to_datetime(df_k[col_date_k[0]], dayfirst=True, errors='coerce')
                 df_k["_date_reelle"] = pd.to_datetime(df_k[col_reelle_k[0]], dayfirst=True, errors='coerce') if col_reelle_k else pd.NaT
+                # Date planifiée de référence pour le respect de délai : si la colonne dédiée existe
+                # dans le Sheet on l'utilise, sinon (tant qu'elle n'a pas été ajoutée) on considère
+                # provisoirement que la date planifiée = la date de dernière visite (donc toujours respecté).
+                if col_planifiee_k:
+                    df_k["_date_planifiee"] = pd.to_datetime(df_k[col_planifiee_k[0]], dayfirst=True, errors='coerce')
+                else:
+                    df_k["_date_planifiee"] = df_k["_date_reelle"]
                 df_k = df_k.dropna(subset=["_date_brute"])
 
                 cles_k=[]
@@ -1675,12 +1683,12 @@ if acces_autorise:
                 
 
 
-                # ---- KPI 2 : Taux de respect de délai de visite (écart ≤ 3j vs échéance théorique initiale) ----
+                # ---- KPI 2 : Taux de respect de délai de visite (écart ≤ 1 mois entre date planifiée et date de dernière visite) ----
                 df_realises_k = df_k[df_k["_date_reelle"].notna()].copy()
                 nb_visites_realisees = len(df_realises_k)
                 if nb_visites_realisees > 0:
-                    df_realises_k["_ecart"] = (df_realises_k["_date_reelle"] - df_realises_k["_date_brute"]).dt.days.abs()
-                    nb_respectes = int((df_realises_k["_ecart"] <= 3).sum())
+                    df_realises_k["_ecart"] = (df_realises_k["_date_reelle"] - df_realises_k["_date_planifiee"]).dt.days.abs()
+                    nb_respectes = int((df_realises_k["_ecart"] <= 31).sum())
                 else:
                     nb_respectes = 0
                 nb_non_respectes = nb_visites_realisees - nb_respectes
