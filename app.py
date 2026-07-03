@@ -927,7 +927,7 @@ if acces_autorise:
         return pct, couleur
 
     pct_sgb, couleur_sgb = _pct_et_couleur(nb_ctrl_site["SGB"], TOTAL_CATEGORIES_PAR_SITE)
-    pct_meg, couleur_meg = _pct_et_couleur(nb_ctrl_site["MEG"], TOTAL_CATEGORIES_PAR_SITE)
+    pct_meg, couleur_meg = _pct_et_couleur(nb_ctrl_site["MEG"]-1, TOTAL_CATEGORIES_PAR_SITE)
 
     k1,k2=st.columns(2)
     with k1:
@@ -936,7 +936,7 @@ if acces_autorise:
             <p style="margin:8px 0 0 0;font-size:34px;color:#0F172A;font-weight:700;line-height:1;">{val_total}</p></div>""",unsafe_allow_html=True)
     with k2:
         st.markdown(f"""<div style="background:white;padding:22px;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);border-left:5px solid #0EA5E9;height:118px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:8px;">
-            <p style="margin:0;font-size:12px;color:#64748B;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Contrôles Planifiés 2026</p>
+            <p style="margin:0;font-size:12px;color:#64748B;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Contrôles Réalisés 2026</p>
             <div style="display:flex;align-items:center;gap:8px;">
                 <span style="font-size:11px;color:#334155;font-weight:700;width:32px;flex-shrink:0;">SGB</span>
                 <div style="flex:1;height:8px;background:#E2E8F0;border-radius:4px;overflow:hidden;">
