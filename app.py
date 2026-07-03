@@ -927,7 +927,7 @@ if acces_autorise:
         return pct, couleur
 
     pct_sgb, couleur_sgb = _pct_et_couleur(nb_ctrl_site["SGB"], TOTAL_CATEGORIES_PAR_SITE)
-    pct_meg-1, couleur_meg = _pct_et_couleur(nb_ctrl_site["MEG"]-1, TOTAL_CATEGORIES_PAR_SITE)
+    pct_meg, couleur_meg = _pct_et_couleur(nb_ctrl_site["MEG"]-1, TOTAL_CATEGORIES_PAR_SITE)
 
     k1,k2=st.columns(2)
     with k1:
