@@ -1608,10 +1608,48 @@ if acces_autorise:
                 df_k = df_k.sort_values("_date_brute", ascending=True)
                 df_k = df_k.drop_duplicates(subset=cles_k, keep="last")
 
-                # ---- KPI 1 : Taux de réalisation 2026 (échéances théoriques comprises entre 01/01/2026 et 31/12/2026) ----
-                df_2026 = df_k[df_k["_date_brute"].dt.year == 2026]
-                nb_total_2026    = len(df_2026)
-                nb_realises_2026 = int(df_2026["_date_reelle"].notna().sum())
+                # ---- KPI 1 : Taux de réalisation 2026, calculé PAR INSTALLATION (et non par équipement) ----
+                # Contrôles attendus en 2026 selon la périodicité de chaque installation :
+                #   - Installations électriques : périodicité 6 mois -> 2 contrôles/an
+                #   - Les 4 autres types        : périodicité 12 mois -> 1 contrôle/an
+                # => 2 sites (SGB, MEG) x (1 élec x2 + 4 autres x1) = 12 contrôles attendus au total sur l'année
+
+                SITES_SUIVIS = ["SGB", "MEG"]
+                INSTALLATIONS_SUIVIES = list(PERIODICITE.keys())
+
+                def nb_campagnes_attendues(installation):
+                    return round(12 / PERIODICITE.get(installation, 12))
+
+                nb_total_2026 = sum(nb_campagnes_attendues(ins) for ins in INSTALLATIONS_SUIVIES) * len(SITES_SUIVIS)
+
+                df_2026 = df_k[df_k["_date_brute"].dt.year == 2026].copy()
+                if col_site_k:
+                    df_2026 = df_2026[df_2026[col_site_k[0]].astype(str).str.strip().isin(SITES_SUIVIS)]
+
+                installations_non_realisees = []
+                nb_realises_2026 = 0
+
+                for site in SITES_SUIVIS:
+                    for ins in INSTALLATIONS_SUIVIES:
+                        attendu = nb_campagnes_attendues(ins)
+                        df_grp = df_2026[df_2026[col_ins_k[0]].astype(str).str.strip() == ins]
+                        if col_site_k:
+                            df_grp = df_grp[df_grp[col_site_k[0]].astype(str).str.strip() == site]
+                        # Une "campagne" = une échéance théorique (date brute) distincte pour cette
+                        # installation sur ce site ; elle est considérée réalisée si au moins un
+                        # équipement de cette échéance a une date réelle renseignée.
+                        nb_campagnes_realisees = df_grp[df_grp["_date_reelle"].notna()]["_date_brute"].nunique()
+                        nb_realise = min(nb_campagnes_realisees, attendu)
+                        nb_realises_2026 += nb_realise
+                        if nb_realise < attendu:
+                            installations_non_realisees.append({
+                                "Site": site,
+                                "Installation": ins,
+                                "Réalisés": nb_realise,
+                                "Attendus": attendu,
+                                "Manquants": attendu - nb_realise
+                            })
+
                 nb_restants_2026 = nb_total_2026 - nb_realises_2026
                 taux1 = round(nb_realises_2026/nb_total_2026*100,1) if nb_total_2026>0 else 0
                 
@@ -1631,7 +1669,7 @@ if acces_autorise:
 
 
                 kpi_data = {
-                    "kpi1": {"taux":taux1, "realises":nb_realises_2026, "restants":nb_restants_2026, "total":nb_total_2026},
+                    "kpi1": {"taux":taux1, "realises":nb_realises_2026, "restants":nb_restants_2026, "total":nb_total_2026, "manquants":installations_non_realisees},
                     "kpi2": {"taux":taux2, "respectes":nb_respectes, "non_respectes":nb_non_respectes, "total":nb_visites_realisees}
                 }
 
@@ -1642,31 +1680,44 @@ if acces_autorise:
 
                 with k1c:
                     st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Taux de réalisation 2026</p></p>",unsafe_allow_html=True)
-                    if nb_visites_realisees>0:
-                        dfp2=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_respectes,nb_non_respectes]})
-                        fig2=px.pie(dfp2,values="Nombre",names="Statut",hole=0.6,color="Statut",
-                                    color_discrete_map={"Réalisés":"#10B981","Restants":"#EF4444"})
-                        fig2.update_traces(textposition='inside',textinfo='percent')
-                        fig2.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
-                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
-                        st.plotly_chart(fig2,use_container_width=True,config={'displayModeBar':False})
-                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% réalisés ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
-                    else:
-                        st.info("Aucune visite réalisée à ce jour.")
-
-                with k2c:
-                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤ 1 mois)</p>",unsafe_allow_html=True)
                     if nb_total_2026>0:
-                        dfp1=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_realises_2026,nb_restants_2026]})
+                        dfp1=pd.DataFrame({"Statut":["Réalisés","Restants"],"Nombre":[nb_realises_2026,nb_restants_2026]})
                         fig1=px.pie(dfp1,values="Nombre",names="Statut",hole=0.6,color="Statut",
-                                    color_discrete_map={"Respecté":"#0EA5E9","Non respecté":"#EF4444"})
+                                    color_discrete_map={"Réalisés":"#10B981","Restants":"#EF4444"})
                         fig1.update_traces(textposition='inside',textinfo='percent')
                         fig1.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig1,use_container_width=True,config={'displayModeBar':False})
-                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% respectés ({nb_respectes}/{nb_respectes})</p>",unsafe_allow_html=True)
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux1}% réalisés ({nb_realises_2026}/{nb_total_2026} contrôles d'installation)</p>",unsafe_allow_html=True)
                     else:
-                        st.info("Aucun contrôle avec échéance théorique en 2026.")
+                        st.info("Aucune échéance d'installation en 2026.")
+
+                with k2c:
+                    st.markdown("<p style='text-align:center;font-weight:600;color:#1E293B;font-size:14px;'>Respect délai de visite (≤ 1 mois)</p>",unsafe_allow_html=True)
+                    if nb_visites_realisees>0:
+                        dfp2=pd.DataFrame({"Statut":["Respecté","Non respecté"],"Nombre":[nb_respectes,nb_non_respectes]})
+                        fig2=px.pie(dfp2,values="Nombre",names="Statut",hole=0.6,color="Statut",
+                                    color_discrete_map={"Respecté":"#0EA5E9","Non respecté":"#EF4444"})
+                        fig2.update_traces(textposition='inside',textinfo='percent')
+                        fig2.update_layout(margin=dict(t=10,b=10,l=10,r=10),height=260,showlegend=False,
+                                            paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig2,use_container_width=True,config={'displayModeBar':False})
+                        st.markdown(f"<p style='text-align:center;font-size:13px;color:#64748B;'>{taux2}% respectés ({nb_respectes}/{nb_visites_realisees})</p>",unsafe_allow_html=True)
+                    else:
+                        st.info("Aucune visite réalisée à ce jour.")
+
+            # ---- Détail des installations pas encore réalisées pour 2026 ----
+            if kpi_data is not None and kpi_data["kpi1"]["manquants"]:
+                st.markdown("<br>",unsafe_allow_html=True)
+                st.markdown("<p style='font-weight:600;color:#1E293B;font-size:14px;'>⏳ Installations pas encore réalisées pour 2026</p>",unsafe_allow_html=True)
+                df_manquants = pd.DataFrame(kpi_data["kpi1"]["manquants"])
+                st.dataframe(df_manquants,column_config={
+                    "Site":st.column_config.TextColumn("Site"),
+                    "Installation":st.column_config.TextColumn("Installation"),
+                    "Réalisés":st.column_config.NumberColumn("Réalisés"),
+                    "Attendus":st.column_config.NumberColumn("Attendus"),
+                    "Manquants":st.column_config.NumberColumn("Manquants"),
+                },hide_index=True,use_container_width=True)
 
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
 
