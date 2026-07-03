@@ -2226,6 +2226,7 @@ if acces_autorise:
                 color_map_pil_v = {p: palette_pil_v[i % len(palette_pil_v)] for i,p in enumerate(entites_atomiques_v)}
 
                 if {"Nature","Pilote","Site"}.issubset(df_nature_v.columns):
+                    vg1,vg2 = st.columns(2)
                     with vg1:
                         dv = df_nature_v[df_nature_v["Site"]==site_choisi].groupby("Nature")["Nombre"].sum().reset_index()
                         if dv.empty:
