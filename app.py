@@ -2118,6 +2118,9 @@ if acces_autorise:
                 color_map_pil = {p: palette_pil[i % len(palette_pil)] for i,p in enumerate(entites_atomiques)}
 
                 def _pie_nature_site(df_src, site, color_map, titre):
+                    if "Nombre" not in df_src.columns or "Nature" not in df_src.columns or "Site" not in df_src.columns:
+                        st.info(f"Aucune donnée {site}.")
+                        return
                     d = df_src[df_src["Site"]==site].groupby("Nature")["Nombre"].sum().reset_index()
                     if d.empty:
                         st.info(f"Aucune donnée {site}.")
@@ -2130,6 +2133,9 @@ if acces_autorise:
                     st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
 
                 def _bar_pilote_site(df_src, site, color_map, titre):
+                    if "Nombre" not in df_src.columns or "Pilote" not in df_src.columns or "Site" not in df_src.columns:
+                        st.info(f"Aucune donnée {site}.")
+                        return
                     d = df_src[df_src["Site"]==site]
                     if d.empty:
                         st.info(f"Aucune donnée {site}.")
@@ -2156,7 +2162,7 @@ if acces_autorise:
                                        paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
 
-                if {"Nature","Pilote","Site"}.issubset(df_nature_f.columns):
+                if {"Nature","Pilote","Site","Nombre"}.issubset(df_nature_f.columns):
                     with g2: _bar_pilote_site(df_nature_f,"SGB",color_map_pil,"SGB — % par pilote")
                     g3,g4 = st.columns(2)
                     with g3: _pie_nature_site(df_nature_f,"MEG",color_map_nat,"MEG — % par nature")
