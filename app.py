@@ -2606,8 +2606,6 @@ if acces_autorise:
             # ================= RAPPORT PDF PAR PILOTE (CODIFICATION EXTERNE) =================
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📄 Rapport PDF par Pilote (Codification)</p>",unsafe_allow_html=True)
-            st.caption("Génère un rapport listant, pour un pilote choisi, toutes les actions du classeur de codification "
-                       "(un onglet = une installation), filtrées selon les codes qui le concernent.")
 
             entites_pilote_codif = sorted(set(
                 e.strip() for v in NATURE_PILOTE.values() for e in v[1].split("+") if e.strip()
