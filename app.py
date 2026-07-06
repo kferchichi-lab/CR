@@ -9,6 +9,7 @@ import time
 import requests
 import calendar
 import base64
+import io
 from weasyprint import HTML
 import fitz  # PyMuPDF
 
@@ -402,6 +403,259 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
     return HTML(string=html_content).write_pdf()
 
 
+def generer_rapport_pilote_pdf(pilote_choisi, df_filtre, logo_url):
+    """
+    Génère un rapport PDF (format paysage) listant, pour un pilote donné, toutes les actions de
+    la codification (classeur externe) qui le concernent — une page par installation
+    (= un onglet du classeur source), sous forme de fiche de suivi terrain :
+    Equipement | Actions | Responsable | Etat (Immédiat/Sous-traitant*/Planifié*) | Réalisation (O/N) | Observation.
+    df_filtre doit contenir les colonnes : Installation, Designation, Observation, Code, Nature.
+    """
+    date_str = datetime.date.today().strftime('%d/%m/%Y')
+    installations = list(dict.fromkeys(df_filtre["Installation"].tolist()))  # ordre stable, sans doublons
+    total_general = len(df_filtre)
+    nom_responsable = SOUS_PILOTE_NOMS.get(pilote_choisi, pilote_choisi)
+
+    html_content = f"""
+    <html>
+    <head>
+    <style>
+        @page {{
+            size: A4 landscape;
+            margin: 15mm 12mm;
+            @bottom-right {{
+                content: "Page " counter(page) " / " counter(pages);
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 9pt;
+                color: #64748B;
+            }}
+        }}
+        body {{
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+            font-size: 10pt;
+        }}
+        .page {{ page-break-after: always; }}
+        .page:last-child {{ page-break-after: avoid; }}
+        .header-title {{
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            color: #1E3A8A;
+            margin-bottom: 14px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #1E3A8A;
+            padding-bottom: 8px;
+        }}
+        .page-header {{
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #E2E8F0;
+        }}
+        .page-header img {{ height: 32px; }}
+        .page-header-text {{
+            font-size: 9.5pt;
+            color: #64748B;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }}
+        .meta-info {{
+            margin-bottom: 14px;
+            background-color: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            padding: 10px 15px;
+            border-radius: 6px;
+            line-height: 1.7;
+            font-size: 10.5pt;
+        }}
+        .category-title {{
+            font-size: 13pt;
+            color: #0EA5E9;
+            font-weight: bold;
+            margin-top: 6px;
+            margin-bottom: 10px;
+            border-left: 4px solid #0EA5E9;
+            padding-left: 8px;
+        }}
+        table {{ width: 100%; border-collapse: collapse; margin-bottom: 14px; }}
+        th, td {{ border: 1px solid #CBD5E1; padding: 6px; text-align: left; font-size: 8.5pt; vertical-align: middle; }}
+        th {{
+            background-color: #1406BE; color: #FFFFFF; font-weight: bold;
+            text-align: center; font-size: 8.5pt;
+        }}
+        .col-equip  {{ width: 13%; }}
+        .col-action {{ width: 22%; }}
+        .col-resp   {{ width: 10%; text-align: center; }}
+        .col-etat   {{ width: 7%; text-align: center; }}
+        .col-real   {{ width: 9%; text-align: center; }}
+        .col-obs    {{ width: 25%; }}
+        .td-chk {{ text-align: center; }}
+        .checkbox-box {{
+            display: inline-block;
+            width: 13px;
+            height: 13px;
+            border: 1.5px solid #1E293B;
+            border-radius: 3px;
+        }}
+        .footnote {{
+            font-size: 8pt;
+            color: #475569;
+            margin-top: 4px;
+        }}
+        .total-badge {{
+            display: inline-block; background:#0EA5E9; color:white; font-weight:700;
+            padding:3px 12px; border-radius:12px; font-size:9pt; margin-left:8px;
+        }}
+        .table-synthese th {{
+            background-color: #1406BE; color: #FFFFFF; font-weight: bold;
+            text-align: center; font-size: 9pt;
+        }}
+        .table-synthese td {{
+            font-size: 9.5pt;
+        }}
+        .table-synthese .ligne-total td {{
+            font-weight: bold;
+            background-color: #F1F5F9;
+        }}
+        .synthese-cadre {{
+            border: 1.5px solid #1E3A8A;
+            border-radius: 6px;
+            padding: 12px 15px;
+            margin-top: 10px;
+            min-height: 260px;
+        }}
+        .synthese-titre {{
+            font-size: 11pt;
+            font-weight: bold;
+            color: #1E3A8A;
+            margin-bottom: 10px;
+        }}
+    </style>
+    </head>
+    <body>
+    """
+
+    for ins in installations:
+        d_ins = df_filtre[df_filtre["Installation"] == ins]
+        html_content += f"""
+        <div class="page">
+            <div class="page-header">
+                <img src="{logo_url}"/>
+                <div class="page-header-text">Tunisie Profilés d'Aluminium — Direction Maintenance &amp; TN</div>
+            </div>
+            <div class="header-title" style="border-bottom: none; padding-bottom: 0;">Plan d'actions - Contrôle réglementaire</div>
+            <div class="meta-info">
+                <strong>Sous-pilote :</strong> {nom_responsable}<br>
+                <strong>Installation :</strong> {ins}<br>
+                <strong>Date d'édition :</strong> {date_str}
+            </div>
+            <div class="category-title">{ins} <span class="total-badge">{len(d_ins)} action(s)</span></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-equip" rowspan="2">Equipement</th>
+                        <th class="col-action" rowspan="2">Actions</th>
+                        <th class="col-resp" rowspan="2">Responsable</th>
+                        <th colspan="3">Etat de suivi</th>
+                        <th class="col-real" rowspan="2">Réalisation<br>(O/N)</th>
+                        <th class="col-obs" rowspan="2">Suivi d'avancement *</th>
+                    </tr>
+                    <tr>
+                        <th class="col-etat">Immédiat</th>
+                        <th class="col-etat">Sous-traitant*</th>
+                        <th class="col-etat">Planifié*</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+        if not d_ins.empty:
+            for equip, span, observation in _lignes_avec_rowspan(d_ins):
+                html_content += "<tr>"
+                if span is not None:
+                    html_content += f'<td rowspan="{span}">{equip}</td>'
+                html_content += f"""
+                        <td>{observation}</td>
+                        <td class="col-resp"></td>
+                        <td class="td-chk"><span class="checkbox-box"></span></td>
+                        <td class="td-chk"><span class="checkbox-box"></span></td>
+                        <td class="td-chk"><span class="checkbox-box"></span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                """
+        else:
+            html_content += """
+                <tr><td colspan="8" style="text-align:center;color:#94A3B8;font-style:italic;">Aucune action</td></tr>
+            """
+        html_content += """
+                </tbody>
+            </table>
+            <div class="footnote">(*) Suivi d'avancement : Date de réalisation, Besoin PDR, Lancement DA, Nom de sous-traitant...</div>
+        </div>
+        """
+
+    footnote_synthese = ('<div class="footnote">(*) Suivi d\'avancement : Date de réalisation, Besoin PDR, '
+                          'Lancement DA, Nom de sous-traitant...</div>')
+
+    lignes_synthese_tableau = ""
+    for ins in installations:
+        nb_ins = len(df_filtre[df_filtre["Installation"] == ins])
+        lignes_synthese_tableau += f"""
+                    <tr>
+                        <td>{ins}</td>
+                        <td style="text-align:center;">{nb_ins}</td>
+                        <td style="text-align:center;"></td>
+                    </tr>
+        """
+
+    html_content += f"""
+    <div class="page">
+        <div class="page-header">
+            <img src="{logo_url}"/>
+            <div class="page-header-text">Tunisie Profilés d'Aluminium — Direction Maintenance &amp; TN</div>
+        </div>
+        <div class="header-title">Plan d'actions - Contrôle réglementaire</div>
+        <div class="meta-info">
+            <strong>Sous-pilote :</strong> {nom_responsable}<br>
+            <strong>Total toutes installations confondues :</strong> {total_general} action(s)<br>
+            <strong>Date d'édition :</strong> {date_str}
+        </div>
+
+        <table class="table-synthese">
+            <thead>
+                <tr>
+                    <th style="width:50%;">Installation</th>
+                    <th style="width:25%;">Nombre d'actions</th>
+                    <th style="width:25%;">Taux de réalisation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {lignes_synthese_tableau}
+                <tr class="ligne-total">
+                    <td>Total</td>
+                    <td style="text-align:center;">{total_general}</td>
+                    <td style="text-align:center;"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="synthese-cadre">
+            <div class="synthese-titre">Synthèse / Observations et remarques</div>
+        </div>
+    </div>
+    </body>
+    </html>
+    """
+
+    return HTML(string=html_content).write_pdf()
+
+
 st.set_page_config(
     page_title="Contrôle Réglementaire",
     page_icon="🛡️",
@@ -422,6 +676,9 @@ tab3 = None
 TZ       = pytz.timezone('Africa/Tunis')
 SHEET_ID = "1ZK6VWg_gcCO70nt6DTyYogDeNeQUgovFmwWQufMVO-M"
 URL_GOOGLE_SHEET = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit?gid=0#gid=0"
+# Classeur externe "Classification des actions CR 2026" : un onglet par installation,
+# colonnes Désignation | Observation | Code (T/S/E/D/O/R). Utilisé pour le rapport PDF par pilote.
+CODIF_SHEET_ID = "119hyynlCiIUzf-17iiSkcPnaEr2oCiFC"
 SEUIL_EN_LIGNE_SECONDES = 90
 calendar.setfirstweekday(0)
 
@@ -597,11 +854,161 @@ def sheets_lire(onglet, plage="A:Z"):
         if resp.status_code!=200: return pd.DataFrame()
         valeurs = resp.json().get("values",[])
         if len(valeurs)<=1: return pd.DataFrame()
-        return pd.DataFrame(valeurs[1:],columns=valeurs[0])
+        entetes = [str(c).strip() for c in valeurs[0]]
+        nb_col = len(entetes)
+        # Complète les lignes trop courtes avec des cellules vides (Google Sheets omet les cellules vides en fin de ligne)
+        lignes = [ (r + [""]*(nb_col-len(r)))[:nb_col] for r in valeurs[1:] ]
+        df = pd.DataFrame(lignes,columns=entetes)
+        # Nettoie les espaces superflus dans toutes les valeurs texte pour éviter les non-correspondances silencieuses
+        for c in df.columns:
+            if df[c].dtype == object:
+                df[c] = df[c].astype(str).str.strip()
+        return df
     except Exception:
         return pd.DataFrame()
 
-def sheets_ecrire_cellule(onglet, cellule, valeur):
+def _obtenir_token_scope(scope):
+    """Comme obtenir_access_token(), mais permet de demander un scope OAuth différent
+    (ex: Drive en lecture) avec le même compte de service."""
+    try:
+        import jwt as pyjwt
+        private_key  = st.secrets["connections"]["gsheets"]["private_key"]
+        client_email = st.secrets["connections"]["gsheets"]["client_email"]
+        now = int(time.time())
+        payload = {"iss":client_email,"scope":scope,
+                   "aud":"https://oauth2.googleapis.com/token","exp":now+3600,"iat":now}
+        token_jwt = pyjwt.encode(payload, private_key, algorithm="RS256")
+        resp = requests.post("https://oauth2.googleapis.com/token",
+            data={"grant_type":"urn:ietf:params:oauth:grant-type:jwt-bearer","assertion":token_jwt},timeout=15)
+        return resp.json()["access_token"] if resp.status_code==200 else None
+    except Exception:
+        return None
+
+
+def codif_charger_classeur(sheet_id):
+    """Télécharge le classeur de codification via l'API Google Drive (fonctionne même si le
+    fichier est un .xlsx uploadé et jamais converti en Google Sheets natif, contrairement à
+    l'API Sheets). Retourne (dict {nom_onglet: DataFrame_brut_sans_entete}, message_erreur)."""
+    token = _obtenir_token_scope("https://www.googleapis.com/auth/drive.readonly")
+    if not token:
+        return None, "Impossible d'obtenir un jeton d'accès Google (scope Drive)."
+    try:
+        url = f"https://www.googleapis.com/drive/v3/files/{sheet_id}?alt=media"
+        resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, timeout=30)
+        if resp.status_code in (403, 404):
+            try:
+                email = st.secrets["connections"]["gsheets"]["client_email"]
+            except Exception:
+                email = "(voir le champ client_email de vos secrets)"
+            return None, (f"Accès refusé au fichier de codification. Partagez-le (en lecture) "
+                           f"avec le compte de service : {email}")
+        if resp.status_code != 200:
+            return None, f"Erreur API Google Drive ({resp.status_code}) : {resp.text[:300]}"
+        classeur = pd.read_excel(io.BytesIO(resp.content), sheet_name=None, header=None, engine="openpyxl")
+        return classeur, None
+    except Exception as e:
+        return None, f"Erreur inattendue lors de la lecture du fichier Excel : {e}"
+
+
+def _detecter_entete_et_nettoyer_codif(valeurs):
+    """Prend les lignes brutes (liste de listes) d'un onglet du classeur de codification et
+    retourne un DataFrame propre avec les colonnes Designation | Observation | Code.
+    Cherche automatiquement la ligne d'en-tête, en tolérant les différents intitulés utilisés
+    selon les onglets (ex: 'Désignation'/'Rapport' pour l'équipement,
+    'Observation'/'Organes examinés NC'/'Problème' pour l'action), et complète (forward-fill)
+    les cellules d'équipement fusionnées verticalement dans la feuille source."""
+    if not valeurs:
+        return pd.DataFrame()
+
+    MOTS_CLES_EQUIP = ["désignation", "designation", "équipement", "equipement", "rapport"]
+    MOTS_CLES_OBS   = ["observation", "organe", "examin", "problème", "probleme", "action"]
+
+    idx_entete = None
+    for i, ligne in enumerate(valeurs):
+        cellules = [str(c).strip().lower() for c in ligne]
+        a_equip = any(any(mc in c for mc in MOTS_CLES_EQUIP) for c in cellules)
+        a_obs   = any(any(mc in c for mc in MOTS_CLES_OBS) for c in cellules)
+        if a_equip and a_obs:
+            idx_entete = i
+            break
+    if idx_entete is None:
+        return pd.DataFrame()
+
+    entetes = [str(c).strip() for c in valeurs[idx_entete]]
+    nb_col = len(entetes)
+    lignes = valeurs[idx_entete + 1:]
+    lignes = [(list(r) + [""] * (nb_col - len(r)))[:nb_col] for r in lignes]
+    df = pd.DataFrame(lignes, columns=entetes)
+
+    def _trouver_colonne(colonnes, groupes_mots_cles):
+        """Cherche la colonne correspondant au groupe de mots-clés le plus spécifique possible
+        (on essaie groupe par groupe, du plus spécifique au plus générique, et on ne retombe sur
+        un groupe générique — ex: 'rapport', 'action' — que si aucune colonne plus spécifique
+        n'a matché, pour éviter de capturer par erreur une autre colonne du même onglet)."""
+        for groupe in groupes_mots_cles:
+            for c in colonnes:
+                if any(mc in c.lower() for mc in groupe):
+                    return c
+        return None
+
+    col_desig = _trouver_colonne(df.columns, [
+        ["désignation", "designation", "équipement", "equipement"],
+        ["rapport"],
+    ])
+    col_obs = _trouver_colonne(df.columns, [
+        ["observation"],
+        ["organe", "examin"],
+        ["problème", "probleme"],
+        ["action"],
+    ])
+    col_code  = next((c for c in df.columns if c.strip().lower() in ("c", "code")), None)
+    if not (col_desig and col_obs and col_code):
+        return pd.DataFrame()
+
+    df = df[[col_desig, col_obs, col_code]].copy()
+    df.columns = ["Designation", "Observation", "Code"]
+    for c in df.columns:
+        df[c] = df[c].astype(str).str.strip()
+        df[c] = df[c].replace("nan", "")
+    df["Designation"] = df["Designation"].replace("", pd.NA).ffill().fillna("")
+    df["Code"] = df["Code"].str.upper()
+    df = df[(df["Observation"] != "") & (df["Code"] != "")]
+    df = df[df["Code"].isin(NATURE_PILOTE.keys())]
+    return df.reset_index(drop=True)
+
+
+def _codes_pour_pilote(pilote_choisi):
+    """Retourne la liste des codes (T,S,E,D,O,R) dont le champ Pilote (potentiellement
+    combiné avec '+') contient l'entité choisie."""
+    codes = []
+    for code, (_, pilote_str) in NATURE_PILOTE.items():
+        entites = [e.strip() for e in pilote_str.split("+") if e.strip()]
+        if pilote_choisi in entites:
+            codes.append(code)
+    return codes
+
+
+def _lignes_avec_rowspan(d_ins):
+    """Regroupe les lignes consécutives ayant le même Equipement (Designation) pour permettre
+    une fusion de cellules (rowspan) dans le tableau PDF.
+    Retourne une liste de tuples (equipement_ou_None, rowspan_ou_None, observation)."""
+    valeurs = d_ins["Designation"].tolist()
+    obs = d_ins["Observation"].tolist()
+    lignes = []
+    i, n = 0, len(valeurs)
+    while i < n:
+        j = i
+        while j < n and valeurs[j] == valeurs[i]:
+            j += 1
+        span = j - i
+        lignes.append((valeurs[i], span, obs[i]))
+        for k in range(i + 1, j):
+            lignes.append((None, None, obs[k]))
+        i = j
+    return lignes
+
+
+
     ok, _ = sheets_ecrire_cellule_v2(onglet, cellule, valeur)
     return ok
 
@@ -756,6 +1163,17 @@ NATURE_PILOTE = {
     "D": ("Documentation",  "BT + HSE"),
     "O": ("Organisation",   "DMTN + Chef service BT"),
     "R": ("Règlementation", "BT + HSE + RH + DG"),
+}
+
+# Nom du sous-pilote (personne responsable) associé à chaque entité de pilotage.
+# Les entités non listées ici (ex: DMTN) affichent l'entité elle-même à défaut de nom connu.
+SOUS_PILOTE_NOMS = {
+    "Maintenance":     "Saber BEN CHAABEN",
+    "HSE":             "Montassar MEHRABI",
+    "BT":              "Aïcha BELLAKHAL",
+    "Chef service BT": "Aïcha BELLAKHAL",
+    "RH":              "Aïcha BELLAKHAL",
+    "DG":              "Aïcha BELLAKHAL",
 }
 
 def lire_points_reserve_nature():
@@ -2184,6 +2602,78 @@ if acces_autorise:
                                     st.rerun()
                                 else:
                                     st.error("Erreur lors de la suppression.")
+
+            # ================= RAPPORT PDF PAR PILOTE (CODIFICATION EXTERNE) =================
+            st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📄 Rapport PDF par Pilote (Codification)</p>",unsafe_allow_html=True)
+            st.caption("Génère un rapport listant, pour un pilote choisi, toutes les actions du classeur de codification "
+                       "(un onglet = une installation), filtrées selon les codes qui le concernent.")
+
+            entites_pilote_codif = sorted(set(
+                e.strip() for v in NATURE_PILOTE.values() for e in v[1].split("+") if e.strip()
+            ))
+            cpil1,cpil2 = st.columns([3,1])
+            with cpil1:
+                pilote_codif_choisi = st.selectbox("Pilote",entites_pilote_codif,key="pilote_codif_select")
+            with cpil2:
+                st.write("")
+                st.write("")
+                lancer_rapport_pilote = st.button("👁️ Générer",use_container_width=True,key="btn_gen_rapport_pilote",type="primary")
+
+            if lancer_rapport_pilote:
+                with st.spinner("Lecture du classeur de codification..."):
+                    classeur, err = codif_charger_classeur(CODIF_SHEET_ID)
+                    if err:
+                        st.session_state["pdf_pilote"] = None
+                        st.error(err)
+                    elif not classeur:
+                        st.session_state["pdf_pilote"] = None
+                        st.warning("Aucun onglet trouvé dans le classeur de codification.")
+                    else:
+                        frames = []
+                        for onglet, df_brut in classeur.items():
+                            valeurs = df_brut.fillna("").astype(str).values.tolist()
+                            d = _detecter_entete_et_nettoyer_codif(valeurs)
+                            if not d.empty:
+                                d["Installation"] = onglet
+                                frames.append(d)
+                        if not frames:
+                            st.session_state["pdf_pilote"] = None
+                            st.warning("Aucune donnée exploitable trouvée dans les onglets du classeur "
+                                       "(colonnes Désignation/Observation/Code introuvables).")
+                        else:
+                            df_codif = pd.concat(frames,ignore_index=True)
+                            df_codif["Nature"] = df_codif["Code"].map(lambda c: NATURE_PILOTE.get(c,("",""))[0])
+                            codes_ok = _codes_pour_pilote(pilote_codif_choisi)
+                            df_filtre_codif = df_codif[df_codif["Code"].isin(codes_ok)]
+                            if df_filtre_codif.empty:
+                                st.session_state["pdf_pilote"] = None
+                                st.info(f"Aucune action trouvée pour le pilote « {pilote_codif_choisi} » "
+                                        f"(codes recherchés : {', '.join(codes_ok) if codes_ok else '—'}).")
+                            else:
+                                try:
+                                    st.session_state["pdf_pilote"] = generer_rapport_pilote_pdf(
+                                        pilote_codif_choisi, df_filtre_codif,
+                                        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s"
+                                    )
+                                    st.session_state["nb_actions_pilote"] = len(df_filtre_codif)
+                                    st.session_state["pilote_pdf_nom"] = pilote_codif_choisi
+                                except Exception as e:
+                                    st.session_state["pdf_pilote"] = None
+                                    st.error(f"Erreur lors de la génération du PDF : {e}")
+
+            if st.session_state.get("pdf_pilote"):
+                st.success(f"{st.session_state.get('nb_actions_pilote',0)} action(s) trouvée(s) pour "
+                           f"« {st.session_state.get('pilote_pdf_nom','')} ».")
+                afficher_apercu_pdf_grille(st.session_state["pdf_pilote"], colonnes=2)
+                st.download_button(
+                    label="📥 Télécharger le rapport PDF",
+                    data=st.session_state["pdf_pilote"],
+                    file_name=f"Rapport_{st.session_state.get('pilote_pdf_nom','pilote')}_{datetime.date.today().strftime('%d_%m_%Y')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                    key="dl_pilote"
+                )
 
             # ================= RAPPORT PDF PREMIUM =================
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
