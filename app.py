@@ -1912,7 +1912,7 @@ if acces_autorise:
             # ================= POINTS DE RÉSERVE =================
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📌 Actions de contrôle</p>",unsafe_allow_html=True)
 
-            with st.spinner("Chargement des points de réserve..."):
+            with st.spinner("Chargement des actions..."):
                 df_reserve = lire_points_reserve()
 
             with st.expander("➕ Ajouter une action"):
@@ -2049,7 +2049,7 @@ if acces_autorise:
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>🧭 Points de réserve par nature</p>",unsafe_allow_html=True)
 
-            with st.spinner("Chargement des points de réserve par nature..."):
+            with st.spinner("Chargement des actions par nature..."):
                 df_nature = lire_points_reserve_nature()
 
             with st.expander("➕ Ajouter une ligne"):
@@ -2151,7 +2151,7 @@ if acces_autorise:
                                  color="Pilote",color_discrete_map=color_map)
                     fig.update_traces(texttemplate='%{text}%',textposition='outside',cliponaxis=False)
                     fig.update_layout(title=titre,title_x=0.5,showlegend=False,
-                                       xaxis_title="% des points de réserve",yaxis_title="",
+                                       xaxis_title="% des actions",yaxis_title="",
                                        margin=dict(t=40,b=10,l=10,r=30),height=280,
                                        paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
@@ -2220,7 +2220,7 @@ if acces_autorise:
         with tab_kpi:
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Points de réserve par nature</p>",unsafe_allow_html=True)
 
-            with st.spinner("Chargement des points de réserve par nature..."):
+            with st.spinner("Chargement des actions par nature..."):
                 df_nature_v = lire_points_reserve_nature()
 
             if df_nature_v.empty:
@@ -2286,7 +2286,7 @@ if acces_autorise:
                                            color="Pilote",color_discrete_map=color_map_pil_v)
                             figv2.update_traces(texttemplate='%{text}%',textposition='outside',cliponaxis=False)
                             figv2.update_layout(title=f"{site_choisi} — % par pilote",title_x=0.5,showlegend=False,
-                                                 xaxis_title="% des points de réserve",yaxis_title="",
+                                                 xaxis_title="% des actions",yaxis_title="",
                                                  margin=dict(t=40,b=10,l=10,r=30),height=300,
                                                  paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                             st.plotly_chart(figv2,use_container_width=True,config={'displayModeBar':False})
