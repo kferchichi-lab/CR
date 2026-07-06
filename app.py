@@ -260,7 +260,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
     """
     Génère un rapport PDF premium regroupant tous les KPI de l'onglet KPI :
     Taux de réalisation 2026, Taux de respect de délai,
-    cartographie du taux de non-conformité, et points de réserve.
+    cartographie du taux de non-conformité, et actions de contrôle.
     """
     date_str = datetime.date.today().strftime('%d/%m/%Y')
 
@@ -732,7 +732,7 @@ def supprimer_equipement_ligne(num_ligne_sheet):
 
 
 # ==========================================
-# POINTS DE RÉSERVE (onglet dédié "PointsReserve")
+# Actions de contrôle (onglet dédié "PointsReserve")
 # ==========================================
 def lire_points_reserve():
     """Lit l'onglet PointsReserve : Site | Installation | Sous_equipement | Nombre."""
@@ -745,8 +745,8 @@ def ajouter_point_reserve(site, installation, sous_eq, nombre):
 
 
 # ==========================================
-# POINTS DE RÉSERVE PAR NATURE (onglet dédié "PointsReserveNature")
-# Table KPI : Site | Installation | Nombre de pts de réserve | Nature | Pilote
+# Actions de contrôle PAR NATURE (onglet dédié "PointsReserveNature")
+# Table KPI : Site | Installation | Nombre de actions | Nature | Pilote
 # Le pilote est déduit automatiquement du code de la nature.
 # ==========================================
 NATURE_PILOTE = {
@@ -1909,7 +1909,7 @@ if acces_autorise:
 
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
 
-            # ================= POINTS DE RÉSERVE =================
+            # ================= Actions de contrôle =================
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📌 Actions de contrôle</p>",unsafe_allow_html=True)
 
             with st.spinner("Chargement des actions..."):
@@ -1944,7 +1944,7 @@ if acces_autorise:
                     df_reserve["Nombre"] = pd.to_numeric(df_reserve["Nombre"],errors="coerce").fillna(0).astype(int)
 
                 with st.container(border=True):
-                    st.markdown("<p style='font-weight:600;color:#1E293B;margin:0 0 10px 0;font-size:13px;'>🔍 Filtrer les points de réserve</p>",unsafe_allow_html=True)
+                    st.markdown("<p style='font-weight:600;color:#1E293B;margin:0 0 10px 0;font-size:13px;'>🔍 Filtrer les Actions de contrôle</p>",unsafe_allow_html=True)
                     fr1,fr2,fr3 = st.columns(3)
                     sites_dispo = ["Tous"]+sorted(df_reserve["Site"].dropna().unique().tolist()) if "Site" in df_reserve.columns else ["Tous"]
                     inss_dispo  = ["Tous"]+sorted(df_reserve["Installation"].dropna().unique().tolist()) if "Installation" in df_reserve.columns else ["Tous"]
@@ -1961,7 +1961,7 @@ if acces_autorise:
                     df_reserve_f = df_reserve_f[df_reserve_f["Sous_equipement"].astype(str).str.contains(f_res_seq.strip(),case=False,na=False)]
 
                 st.dataframe(df_reserve_f.rename(columns={
-                    "Site":"Site","Installation":"Installation","Sous_equipement":"Sous équipement","Nombre":"Nbre points de réserve"
+                    "Site":"Site","Installation":"Installation","Sous_equipement":"Sous équipement","Nombre":"Nbre actions de contrôle"
                 }),hide_index=True,use_container_width=True)
 
                 st.markdown("<br>",unsafe_allow_html=True)
@@ -2045,9 +2045,9 @@ if acces_autorise:
                                 else:
                                     st.error("Erreur lors de la suppression.")
 
-            # ================= POINTS DE RÉSERVE PAR NATURE =================
+            # ================= Actions de contrôle PAR NATURE =================
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
-            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>🧭 Points de réserve par nature</p>",unsafe_allow_html=True)
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>🧭 Actions de contrôle par nature</p>",unsafe_allow_html=True)
 
             with st.spinner("Chargement des actions par nature..."):
                 df_nature = lire_points_reserve_nature()
@@ -2097,7 +2097,7 @@ if acces_autorise:
                     df_nature_f = df_nature_f[df_nature_f["Installation"]==f_nat_ins]
 
                 st.dataframe(df_nature_f.rename(columns={
-                    "Site":"Site","Installation":"Installation","Nombre":"Nbre pts de réserve","Nature":"Nature","Pilote":"Pilote"
+                    "Site":"Site","Installation":"Installation","Nombre":"Nbre actions","Nature":"Nature","Pilote":"Pilote"
                 }),hide_index=True,use_container_width=True)
 
                 st.markdown("<br>",unsafe_allow_html=True)
@@ -2218,7 +2218,7 @@ if acces_autorise:
     # ---- ONGLET 4 : KPI (Visiteur — vue simplifiée en lecture seule) ----
     if tab_kpi and role=="Visiteur":
         with tab_kpi:
-            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Points de réserve par nature</p>",unsafe_allow_html=True)
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Actions de contrôle par nature</p>",unsafe_allow_html=True)
 
             with st.spinner("Chargement des actions par nature..."):
                 df_nature_v = lire_points_reserve_nature()
