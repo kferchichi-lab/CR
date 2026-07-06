@@ -380,7 +380,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
         Liste consolidée des actions de contrôle relevées par site, installation et sous-équipement.</p>
         <table>
-            <thead><tr><th>Site</th><th>Installation</th><th>Sous équipement</th><th>Nbre points</th></tr></thead>
+            <thead><tr><th>Site</th><th>Installation</th><th>Sous équipement</th><th>Nombre des actions</th></tr></thead>
             <tbody>{html_reserve_rows}</tbody>
         </table>
 
@@ -1961,7 +1961,7 @@ if acces_autorise:
                     df_reserve_f = df_reserve_f[df_reserve_f["Sous_equipement"].astype(str).str.contains(f_res_seq.strip(),case=False,na=False)]
 
                 st.dataframe(df_reserve_f.rename(columns={
-                    "Site":"Site","Installation":"Installation","Sous_equipement":"Sous équipement","Nombre":"Nbre actions de contrôle"
+                    "Site":"Site","Installation":"Installation","Sous_equipement":"Sous équipement","Nombre":"Nombre des actions de contrôle"
                 }),hide_index=True,use_container_width=True)
 
                 st.markdown("<br>",unsafe_allow_html=True)
