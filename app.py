@@ -2097,7 +2097,7 @@ if acces_autorise:
                     df_nature_f = df_nature_f[df_nature_f["Installation"]==f_nat_ins]
 
                 st.dataframe(df_nature_f.rename(columns={
-                    "Site":"Site","Installation":"Installation","Nombre":"Nbre actions","Nature":"Nature","Pilote":"Pilote"
+                    "Site":"Site","Installation":"Installation","Nombre":"Nombre des actions","Nature":"Nature","Pilote":"Pilote"
                 }),hide_index=True,use_container_width=True)
 
                 st.markdown("<br>",unsafe_allow_html=True)
