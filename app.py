@@ -623,7 +623,7 @@ def generer_rapport_pilote_pdf(pilote_choisi, df_filtre, logo_url):
         <div class="header-title">Plan d'actions - Contrôle réglementaire</div>
         <div class="meta-info">
             <strong>Sous-pilote :</strong> {nom_responsable}<br>
-            <strong>Total toutes installations confondues :</strong> {total_general} action(s)<br>
+            <strong>Total des actions :</strong> {total_general} action(s)<br>
             <strong>Date d'édition :</strong> {date_str}
         </div>
 
