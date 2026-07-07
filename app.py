@@ -257,11 +257,11 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
     return HTML(string=html_content).write_pdf()
 
 
-def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
+def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url):
     """
     Génère un rapport PDF premium regroupant tous les KPI de l'onglet KPI :
     Taux de réalisation 2026, Taux de respect de délai,
-    cartographie du taux de non-conformité, et actions de contrôle.
+    cartographie du taux de non-conformité, et répartition par site et par pilote.
     """
     date_str = datetime.date.today().strftime('%d/%m/%Y')
 
@@ -272,30 +272,50 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
 
     k1 = kpi_data["kpi1"]; k2 = kpi_data["kpi2"]
 
-    html_reserve_rows = ""
-    if df_reserve is not None and not df_reserve.empty:
-        for _, r in df_reserve.iterrows():
-            html_reserve_rows += (f"<tr><td>{r.get('Site','')}</td><td>{r.get('Installation','')}</td>"
-                                   f"<td>{r.get('Sous_equipement','')}</td>"
-                                   f"<td style='text-align:center;'>{r.get('Nombre',0)}</td></tr>")
-    else:
-        html_reserve_rows = "<tr><td colspan='4' style='text-align:center;color:#94A3B8;'>Aucun point de réserve enregistré</td></tr>"
+    # ---- Répartition par site et par pilote (à partir de PointsReserveNature) ----
+    df_n = df_nature.copy() if (df_nature is not None and not df_nature.empty) else pd.DataFrame()
+    if not df_n.empty and "Nombre" in df_n.columns:
+        df_n["Nombre"] = pd.to_numeric(df_n["Nombre"], errors="coerce").fillna(0)
 
-    site_rows, ins_rows = "", ""
-    if df_reserve is not None and not df_reserve.empty and "Site" in df_reserve.columns:
-        tot = df_reserve["Nombre"].sum()
-        for site, grp in df_reserve.groupby("Site")["Nombre"].sum().items():
-            pct = round(grp/tot*100,1) if tot else 0
-            site_rows += (f"""<div style="margin-bottom:10px;">
+    def _rows_par_site(df_src):
+        if df_src.empty or "Site" not in df_src.columns or "Nombre" not in df_src.columns:
+            return ""
+        tot = df_src["Nombre"].sum()
+        if not tot:
+            return ""
+        rows = ""
+        for site, grp in df_src.groupby("Site")["Nombre"].sum().items():
+            pct = round(grp/tot*100, 1)
+            rows += (f"""<div style="margin-bottom:10px;">
                 <div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;">
-                <span>{site}</span><span>{pct}% ({grp})</span></div>{barre(pct,'#1E3A8A')}</div>""")
-    if df_reserve is not None and not df_reserve.empty and "Installation" in df_reserve.columns:
-        tot = df_reserve["Nombre"].sum()
-        for ins, grp in df_reserve.groupby("Installation")["Nombre"].sum().items():
-            pct = round(grp/tot*100,1) if tot else 0
-            ins_rows += (f"""<div style="margin-bottom:10px;">
+                <span>{site}</span><span>{pct}% ({int(grp)})</span></div>{barre(pct,'#1E3A8A')}</div>""")
+        return rows
+
+    def _rows_par_pilote(df_src):
+        if df_src.empty or "Pilote" not in df_src.columns or "Nombre" not in df_src.columns:
+            return ""
+        total = df_src["Nombre"].sum()
+        compte = {}
+        for _, row in df_src.iterrows():
+            for e in str(row.get("Pilote", "")).split("+"):
+                e = e.strip()
+                if not e:
+                    continue
+                compte[e] = compte.get(e, 0) + row["Nombre"]
+        if not compte or not total:
+            return ""
+        rows = ""
+        for pilote, nb in sorted(compte.items(), key=lambda x: -x[1]):
+            pct = round(nb/total*100, 1)
+            rows += (f"""<div style="margin-bottom:10px;">
                 <div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;">
-                <span>{ins}</span><span>{pct}% ({grp})</span></div>{barre(pct,'#0EA5E9')}</div>""")
+                <span>{pilote}</span><span>{pct}% ({int(nb)})</span></div>{barre(pct,'#F59E0B')}</div>""")
+        return rows
+
+    site_global_rows = _rows_par_site(df_n)
+    pilote_global_rows = _rows_par_pilote(df_n)
+    sgb_pilote_rows = _rows_par_pilote(df_n[df_n["Site"] == "SGB"]) if not df_n.empty and "Site" in df_n.columns else ""
+    meg_pilote_rows = _rows_par_pilote(df_n[df_n["Site"] == "MEG"]) if not df_n.empty and "Site" in df_n.columns else ""
 
     carto_html = ""
     if carto_b64:
@@ -381,22 +401,26 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
     {carto_html}
 
     <div class="page">
-        <div class="category-title">Actions de contrôle</div>
+        <div class="category-title">Répartition par site et par pilote</div>
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
-        Liste consolidée des actions de contrôle relevées par site, installation et sous-équipement.</p>
-        <table>
-            <thead><tr><th>Site</th><th>Installation</th><th>Sous équipement</th><th>Nombre des actions</th></tr></thead>
-            <tbody>{html_reserve_rows}</tbody>
-        </table>
+        Répartition des actions de contrôle relevées, par site et par pilote responsable.</p>
 
-        <div style="display:flex;gap:30px;">
-            <div style="flex:1;">
+        <div style="display:flex;flex-wrap:wrap;gap:25px;">
+            <div style="flex:1 1 45%;min-width:250px;">
                 <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par site</p>
-                {site_rows if site_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+                {site_global_rows if site_global_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
-            <div style="flex:1;">
-                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par installation</p>
-                {ins_rows if ins_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            <div style="flex:1 1 45%;min-width:250px;">
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par pilote</p>
+                {pilote_global_rows if pilote_global_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+            <div style="flex:1 1 45%;min-width:250px;">
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">SGB — par pilote</p>
+                {sgb_pilote_rows if sgb_pilote_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+            <div style="flex:1 1 45%;min-width:250px;">
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">MEG — par pilote</p>
+                {meg_pilote_rows if meg_pilote_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
         </div>
     </div>
@@ -2696,6 +2720,7 @@ if acces_autorise:
                             st.session_state["pdf_kpi"] = generer_rapport_kpi_pdf(
                                 kpi_data,
                                 df_reserve,
+                                df_nature,
                                 carto_b64,
                                 "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s"
                             )
