@@ -272,23 +272,23 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
 
     k1 = kpi_data["kpi1"]; k2 = kpi_data["kpi2"]
 
-    # ---- Répartition par site et par pilote (à partir de PointsReserveNature) ----
+    # ---- Répartition par site / par installation, puis par nature et par pilote pour chaque site ----
     df_n = df_nature.copy() if (df_nature is not None and not df_nature.empty) else pd.DataFrame()
     if not df_n.empty and "Nombre" in df_n.columns:
         df_n["Nombre"] = pd.to_numeric(df_n["Nombre"], errors="coerce").fillna(0)
 
-    def _rows_par_site(df_src):
-        if df_src.empty or "Site" not in df_src.columns or "Nombre" not in df_src.columns:
+    def _rows_par_categorie(df_src, col, couleur):
+        if df_src.empty or col not in df_src.columns or "Nombre" not in df_src.columns:
             return ""
         tot = df_src["Nombre"].sum()
         if not tot:
             return ""
         rows = ""
-        for site, grp in df_src.groupby("Site")["Nombre"].sum().items():
+        for val, grp in df_src.groupby(col)["Nombre"].sum().items():
             pct = round(grp/tot*100, 1)
             rows += (f"""<div style="margin-bottom:10px;">
                 <div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;">
-                <span>{site}</span><span>{pct}% ({int(grp)})</span></div>{barre(pct,'#1E3A8A')}</div>""")
+                <span>{val}</span><span>{pct}% ({int(grp)})</span></div>{barre(pct,couleur)}</div>""")
         return rows
 
     def _rows_par_pilote(df_src):
@@ -312,10 +312,23 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
                 <span>{pilote}</span><span>{pct}% ({int(nb)})</span></div>{barre(pct,'#F59E0B')}</div>""")
         return rows
 
-    site_global_rows = _rows_par_site(df_n)
-    pilote_global_rows = _rows_par_pilote(df_n)
-    sgb_pilote_rows = _rows_par_pilote(df_n[df_n["Site"] == "SGB"]) if not df_n.empty and "Site" in df_n.columns else ""
-    meg_pilote_rows = _rows_par_pilote(df_n[df_n["Site"] == "MEG"]) if not df_n.empty and "Site" in df_n.columns else ""
+    def _sous_df_site(site):
+        if df_n.empty or "Site" not in df_n.columns:
+            return pd.DataFrame()
+        return df_n[df_n["Site"] == site]
+
+    site_global_rows = _rows_par_categorie(df_n, "Site", "#1E3A8A")
+    installation_global_rows = _rows_par_categorie(df_n, "Installation", "#0EA5E9")
+
+    df_sgb = _sous_df_site("SGB")
+    df_meg = _sous_df_site("MEG")
+
+    sgb_nature_rows = _rows_par_categorie(df_sgb, "Nature", "#10B981")
+    sgb_pilote_rows = _rows_par_pilote(df_sgb)
+    meg_nature_rows = _rows_par_categorie(df_meg, "Nature", "#10B981")
+    meg_pilote_rows = _rows_par_pilote(df_meg)
+
+
 
     carto_html = ""
     if carto_b64:
@@ -401,22 +414,36 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
     {carto_html}
 
     <div class="page">
-        <div class="category-title">Répartition par site et par pilote</div>
+        <div class="category-title">Répartition par site et par installation</div>
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
-        Répartition des actions de contrôle relevées, par site et par pilote responsable.</p>
+        Répartition des actions de contrôle relevées, par site et par installation.</p>
 
-        <div style="display:flex;flex-wrap:wrap;gap:25px;">
-            <div style="flex:1 1 45%;min-width:250px;">
+        <div style="display:flex;gap:30px;">
+            <div style="flex:1;">
                 <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par site</p>
                 {site_global_rows if site_global_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
+            <div style="flex:1;">
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par installation</p>
+                {installation_global_rows if installation_global_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+        </div>
+
+        <p style="font-weight:700;font-size:12pt;color:#0F172A;text-align:center;margin:25px 0 15px 0;">
+        Répartition par nature et par pilote</p>
+
+        <div style="display:flex;flex-wrap:wrap;gap:25px;">
             <div style="flex:1 1 45%;min-width:250px;">
-                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par pilote</p>
-                {pilote_global_rows if pilote_global_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">SGB — par nature</p>
+                {sgb_nature_rows if sgb_nature_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
             <div style="flex:1 1 45%;min-width:250px;">
                 <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">SGB — par pilote</p>
                 {sgb_pilote_rows if sgb_pilote_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+            <div style="flex:1 1 45%;min-width:250px;">
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">MEG — par nature</p>
+                {meg_nature_rows if meg_nature_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
             <div style="flex:1 1 45%;min-width:250px;">
                 <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">MEG — par pilote</p>
