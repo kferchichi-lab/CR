@@ -2921,7 +2921,7 @@ if acces_autorise:
             st.markdown(f"<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Indicateurs — {nom_resp}</p>",unsafe_allow_html=True)
             st.markdown(
                 "<div style='background:#EFF6FF;border-left:4px solid #2a78d6;padding:10px 14px;border-radius:6px;margin-bottom:14px;'>"
-                "<p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>👁️ Consultation seule — vous ne voyez ici que les actions et le rapport qui vous concernent.</p>"
+                "<p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>Consultation seule</p>"
                 "</div>", unsafe_allow_html=True)
 
             with st.spinner("Chargement des actions par nature..."):
@@ -2958,7 +2958,7 @@ if acces_autorise:
                             st.rerun()
 
                     site_choisi_r = st.session_state.site_kpi_responsable
-                    st.markdown(f"<p style='font-weight:700;font-size:14px;color:#0F172A;text-align:center;margin:14px 0 10px 0;'>Répartition de vos actions — Site {site_choisi_r}</p>",unsafe_allow_html=True)
+                    st.markdown(f"<p style='font-weight:700;font-size:14px;color:#0F172A;text-align:center;margin:14px 0 10px 0;'>Répartition des actions — Site {site_choisi_r}</p>",unsafe_allow_html=True)
 
                     all_natures_r = [v[0] for v in NATURE_PILOTE.values()]
                     palette_nat_r = px.colors.qualitative.Set2
@@ -2971,7 +2971,7 @@ if acces_autorise:
                         else:
                             total_r = int(d_site_r["Nombre"].sum())
                             st.markdown(f"""<div style="background:white;padding:14px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.05);border-left:4px solid #1E3A8A;margin-bottom:14px;">
-                                <p style="margin:0;font-size:11px;color:#64748B;font-weight:600;text-transform:uppercase;">Total actions vous concernant — {site_choisi_r}</p>
+                                <p style="margin:0;font-size:11px;color:#64748B;font-weight:600;text-transform:uppercase;">Total actions — {site_choisi_r}</p>
                                 <p style="margin:4px 0 0 0;font-size:28px;color:#0F172A;font-weight:700;">{total_r}</p></div>""",unsafe_allow_html=True)
 
                             dv_r = d_site_r.groupby("Nature")["Nombre"].sum().reset_index()
@@ -3014,9 +3014,9 @@ if acces_autorise:
                 entite_pdf_choisie = st.selectbox("Périmètre", entites_resp, key="entite_pdf_responsable")
             else:
                 entite_pdf_choisie = entites_resp[0] if entites_resp else None
-                st.caption(f"Périmètre : {entite_pdf_choisie}")
+                
 
-            if st.button("👁️ Générer mon rapport", use_container_width=True, key="btn_gen_rapport_responsable", type="primary") and entite_pdf_choisie:
+            if st.button("Générer mon rapport", use_container_width=True, key="btn_gen_rapport_responsable", type="primary") and entite_pdf_choisie:
                 with st.spinner("Lecture du classeur de codification..."):
                     classeur, err = codif_charger_classeur(CODIF_SHEET_ID)
                     if err:
