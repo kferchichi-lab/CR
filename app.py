@@ -1397,9 +1397,19 @@ with st.sidebar:
     </div>""",unsafe_allow_html=True)
     st.divider()
     st.markdown("<p style='font-weight:600;color:#334155;margin-bottom:0;'>🔐 Espace sécurisé</p>",unsafe_allow_html=True)
-    role=st.selectbox("Profil :",["Visiteur","Responsable"],label_visibility="collapsed")
+    role=st.selectbox("Profil :",["Visiteur","Responsable","Admin"],label_visibility="collapsed")
     password_correct=False
-    if role=="Responsable":
+
+    # ---- Comptes Responsable (identifiant + mot de passe) ----
+    RESPONSABLES={
+        "SABER": {"password":"SABER123*","nom":"Saber BEN CHAABEN","entites":["Maintenance"]},
+        "HSE":   {"password":"HSE123*",  "nom":"Montassar MEHRABI","entites":["HSE"]},
+        "AICHA": {"password":"AICHA123*","nom":"Aïcha BELLAKHAL",  "entites":["BT","Chef service BT","RH","DG"]},
+    }
+    if "responsable_connecte" not in st.session_state: st.session_state.responsable_connecte=False
+    if "responsable_actif" not in st.session_state: st.session_state.responsable_actif=None
+
+    if role=="Admin":
         password=st.text_input("Code d'accès :",type="password",placeholder="•••")
         if password=="admin123*":
             password_correct=True
@@ -1410,6 +1420,26 @@ with st.sidebar:
                 sheets_append("Logs",[now_str,"responsable@admin"])
         elif password:
             st.error("Code d'accès incorrect")
+    elif role=="Responsable":
+        identifiant=st.text_input("Identifiant :",placeholder="Identifiant").strip().upper()
+        mdp_resp=st.text_input("Mot de passe :",type="password",placeholder="•••")
+        if identifiant and mdp_resp:
+            compte=RESPONSABLES.get(identifiant)
+            if compte and mdp_resp==compte["password"]:
+                st.session_state.responsable_connecte=True
+                st.session_state.responsable_actif=identifiant
+                st.success(f"Accès responsable validé : {compte['nom']}")
+                if st.session_state.get("responsable_dernier_log")!=identifiant:
+                    st.session_state.responsable_dernier_log=identifiant
+                    now_str=datetime.datetime.now(TZ).strftime("%d/%m/%Y %H:%M")
+                    sheets_append("Logs",[now_str,f"{identifiant.lower()}@responsable"])
+            else:
+                st.session_state.responsable_connecte=False
+                st.session_state.responsable_actif=None
+                st.error("Identifiant ou mot de passe incorrect")
+        else:
+            st.session_state.responsable_connecte=False
+            st.session_state.responsable_actif=None
 
 # ==========================================
 # CONTRÔLE D'ACCÈS
@@ -1417,7 +1447,7 @@ with st.sidebar:
 def format_email_valide(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+",email) is not None
 
-acces_autorise=(role=="Responsable" and password_correct) or (role=="Visiteur" and st.session_state.email_visiteur)
+acces_autorise=(role=="Admin" and password_correct) or (role=="Responsable" and st.session_state.responsable_connecte) or (role=="Visiteur" and st.session_state.email_visiteur)
 
 # ==========================================
 # EN-TÊTE (toujours affiché en premier, connecté ou non)
@@ -1458,7 +1488,8 @@ if not acces_autorise and role=="Visiteur":
 # ==========================================
 # HEARTBEAT
 # ==========================================
-if role=="Responsable" and password_correct: email_actif="responsable@admin"
+if role=="Admin" and password_correct: email_actif="responsable@admin"
+elif role=="Responsable" and st.session_state.responsable_connecte: email_actif=f"{st.session_state.responsable_actif.lower()}@responsable"
 elif role=="Visiteur" and st.session_state.email_visiteur: email_actif=st.session_state.email_visiteur
 else: email_actif=None
 
@@ -1543,7 +1574,7 @@ if acces_autorise:
     st.markdown("<br>",unsafe_allow_html=True)
 
     liste_onglets = ["📋 Rapports CR","📅 Planification","📌 Exigences"]
-    if role == "Responsable" and password_correct:
+    if role == "Admin" and password_correct:
         liste_onglets.append("👥 Statistiques")
     liste_onglets.append("📊 KPI")
     onglets = st.tabs(liste_onglets)
@@ -1551,7 +1582,7 @@ if acces_autorise:
     tab3 = None
     tab_kpi = None
     _idx = 3
-    if role == "Responsable" and password_correct:
+    if role == "Admin" and password_correct:
         tab3 = onglets[_idx]; _idx += 1
     tab_kpi = onglets[_idx]
 
@@ -1628,7 +1659,7 @@ if acces_autorise:
                     fig2.update_layout(margin=dict(t=5,b=5,l=10,r=40),height=220,xaxis_title=None,yaxis_title=None,paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                     fig2.update_xaxes(showgrid=True,gridcolor='#E2E8F0')
                     st.plotly_chart(fig2,use_container_width=True,config={'displayModeBar':False})
-        if role=="Responsable" and password_correct:
+        if role=="Admin" and password_correct:
             with st.expander("🛠️ Panneau d'administration"):
                 st.markdown(f"[Ouvrir le Google Sheets]({URL_GOOGLE_SHEET})")
 
@@ -1740,7 +1771,7 @@ if acces_autorise:
 
                 # ---- COLONNE GAUCHE : TABLEAU ----
                 with left_col:
-                    if role!="Responsable" or not password_correct:
+                    if role!="Admin" or not password_correct:
                         # Visiteur : lecture seule
                         cols_visiteur=[]
                         if col_site_r:  cols_visiteur.append(col_site_r[0])
@@ -1752,9 +1783,9 @@ if acces_autorise:
                             "Jours restants":     st.column_config.NumberColumn("Jours restants",format="%d j"),
                         },hide_index=True,use_container_width=True)
                     else:
-                        # Responsable : édition de la date de dernière visite ET de la prochaine échéance
+                        # Admin : édition de la date de dernière visite ET de la prochaine échéance
                         st.markdown("""<div style='background:#EFF6FF;border-left:4px solid #2a78d6;padding:10px 14px;border-radius:6px;margin-bottom:10px;'>
-                            <p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>✏️ Mode responsable — Modifiez la <b>Date de dernière visite</b> et/ou la <b>Prochaine échéance</b> puis sauvegardez. Par défaut, la prochaine échéance est calculée automatiquement selon la périodicité ; toute date saisie ici la remplace.</p>
+                            <p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>✏️ Mode administrateur — Modifiez la <b>Date de dernière visite</b> et/ou la <b>Prochaine échéance</b> puis sauvegardez. Par défaut, la prochaine échéance est calculée automatiquement selon la périodicité ; toute date saisie ici la remplace.</p>
                         </div>""",unsafe_allow_html=True)
                         cols_resp=[]
                         if col_site_r:  cols_resp.append(col_site_r[0])
@@ -2021,8 +2052,8 @@ if acces_autorise:
             else:
                 st.info("Aucun contrat n'a encore été ajouté.")
 
-        if role == "Responsable" and password_correct:
-            with st.expander("✏️ Gérer le contrat (Responsable)"):
+        if role == "Admin" and password_correct:
+            with st.expander("✏️ Gérer le contrat (Admin)"):
                 nouveau_lien = st.text_input("Lien Google Drive du contrat PDF :",
                     value=lien_contrat if lien_contrat.lower() != "nan" else "",
                     placeholder="https://drive.google.com/file/d/...")
@@ -2133,9 +2164,9 @@ if acces_autorise:
                                 f"<p style='margin:6px 0 0 0;font-size:24px;font-weight:800;color:{couleur_ins};'>{int(row_eq.get('Nombre',0))}</p>"
                                 "</div>", unsafe_allow_html=True)
 
-            # Gestion (ajout/suppression) — responsable uniquement
-                if role == "Responsable" and password_correct:
-                    with st.expander("✏️ Gérer les sous-équipements (Responsable)"):
+            # Gestion (ajout/suppression) — admin uniquement
+                if role == "Admin" and password_correct:
+                    with st.expander("✏️ Gérer les sous-équipements (Admin)"):
                         st.markdown("**Ajouter un sous-équipement :**")
                         ac1, ac2, ac3 = st.columns([2, 1, 1])
                         with ac1:
@@ -2237,7 +2268,7 @@ if acces_autorise:
 
     
     # ---- ONGLET 3 : PRÉSENCE & VISITES ----
-    if tab3 and role=="Responsable" and password_correct:
+    if tab3 and role=="Admin" and password_correct:
         with tab3:
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>👥 Suivi des visiteurs</p>",unsafe_allow_html=True)
             col_r,_=st.columns([1,5])
@@ -2296,8 +2327,8 @@ if acces_autorise:
                     "Email":st.column_config.TextColumn("📧 E-mail")},
                     hide_index=True,use_container_width=True)
 
-    # ---- ONGLET 4 : KPI (Responsable uniquement) ----
-    if tab_kpi and role=="Responsable" and password_correct:
+    # ---- ONGLET 4 : KPI (Admin uniquement — vue complète) ----
+    if tab_kpi and role=="Admin" and password_correct:
         with tab_kpi:
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Indicateurs de performance</p>",unsafe_allow_html=True)
             col_r_kpi,_=st.columns([1,5])
@@ -2880,6 +2911,162 @@ if acces_autorise:
                         key="dl_kpi"
                     )
 
+    # ---- ONGLET 4 : KPI (Responsable — vue filtrée sur ses propres actions/rapport) ----
+    if tab_kpi and role=="Responsable" and st.session_state.responsable_connecte:
+        with tab_kpi:
+            compte_resp = RESPONSABLES.get(st.session_state.responsable_actif, {})
+            nom_resp = compte_resp.get("nom", st.session_state.responsable_actif)
+            entites_resp = compte_resp.get("entites", [])
+
+            st.markdown(f"<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Indicateurs — {nom_resp}</p>",unsafe_allow_html=True)
+            st.markdown(
+                "<div style='background:#EFF6FF;border-left:4px solid #2a78d6;padding:10px 14px;border-radius:6px;margin-bottom:14px;'>"
+                "<p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>👁️ Consultation seule — vous ne voyez ici que les actions et le rapport qui vous concernent.</p>"
+                "</div>", unsafe_allow_html=True)
+
+            with st.spinner("Chargement des actions par nature..."):
+                df_nature_r = lire_points_reserve_nature()
+
+            if df_nature_r.empty:
+                st.info("Aucune donnée disponible pour le moment.")
+            else:
+                if "Nombre" in df_nature_r.columns:
+                    df_nature_r["Nombre"] = pd.to_numeric(df_nature_r["Nombre"],errors="coerce").fillna(0).astype(int)
+
+                # Ne garder que les lignes concernant les entités du responsable connecté
+                def _concerne_responsable(pilote_str):
+                    entites = [e.strip() for e in str(pilote_str).split("+") if e.strip()]
+                    return any(e in entites_resp for e in entites)
+
+                if "Pilote" in df_nature_r.columns:
+                    df_nature_r = df_nature_r[df_nature_r["Pilote"].apply(_concerne_responsable)]
+
+                if df_nature_r.empty:
+                    st.info("Aucune action trouvée pour votre périmètre.")
+                else:
+                    if "site_kpi_responsable" not in st.session_state:
+                        st.session_state.site_kpi_responsable = "SGB"
+
+                    rcol1,rcol2,_ = st.columns([1,1,4])
+                    with rcol1:
+                        if st.button("🏭 SGB", key="btn_kpi_sgb_resp", type=("primary" if st.session_state.site_kpi_responsable=="SGB" else "secondary"), use_container_width=True):
+                            st.session_state.site_kpi_responsable = "SGB"
+                            st.rerun()
+                    with rcol2:
+                        if st.button("🏭 MEG", key="btn_kpi_meg_resp", type=("primary" if st.session_state.site_kpi_responsable=="MEG" else "secondary"), use_container_width=True):
+                            st.session_state.site_kpi_responsable = "MEG"
+                            st.rerun()
+
+                    site_choisi_r = st.session_state.site_kpi_responsable
+                    st.markdown(f"<p style='font-weight:700;font-size:14px;color:#0F172A;text-align:center;margin:14px 0 10px 0;'>Répartition de vos actions — Site {site_choisi_r}</p>",unsafe_allow_html=True)
+
+                    all_natures_r = [v[0] for v in NATURE_PILOTE.values()]
+                    palette_nat_r = px.colors.qualitative.Set2
+                    color_map_nat_r = {n: palette_nat_r[i % len(palette_nat_r)] for i,n in enumerate(all_natures_r)}
+
+                    if {"Nature","Site","Nombre"}.issubset(df_nature_r.columns):
+                        d_site_r = df_nature_r[df_nature_r["Site"]==site_choisi_r]
+                        if d_site_r.empty:
+                            st.info(f"Aucune donnée {site_choisi_r} pour votre périmètre.")
+                        else:
+                            total_r = int(d_site_r["Nombre"].sum())
+                            st.markdown(f"""<div style="background:white;padding:14px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.05);border-left:4px solid #1E3A8A;margin-bottom:14px;">
+                                <p style="margin:0;font-size:11px;color:#64748B;font-weight:600;text-transform:uppercase;">Total actions vous concernant — {site_choisi_r}</p>
+                                <p style="margin:4px 0 0 0;font-size:28px;color:#0F172A;font-weight:700;">{total_r}</p></div>""",unsafe_allow_html=True)
+
+                            dv_r = d_site_r.groupby("Nature")["Nombre"].sum().reset_index()
+
+                            gcol1,gcol2 = st.columns(2)
+                            with gcol1:
+                                fig_r = px.pie(dv_r,values="Nombre",names="Nature",hole=0.6,color="Nature",color_discrete_map=color_map_nat_r)
+                                fig_r.update_traces(textposition='inside',textinfo='percent+value')
+                                fig_r.update_layout(title=f"{site_choisi_r} — répartition par nature",title_x=0.5,margin=dict(t=40,b=10,l=10,r=10),height=320,
+                                                     paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',legend=dict(font=dict(size=9)))
+                                st.plotly_chart(fig_r,use_container_width=True,config={'displayModeBar':False})
+
+                            with gcol2:
+                                if "Installation" in d_site_r.columns:
+                                    di_r = d_site_r.groupby("Installation")["Nombre"].sum().reset_index().sort_values("Nombre",ascending=True)
+                                    palette_ins_r = px.colors.qualitative.Set3
+                                    color_map_ins_r = {i: palette_ins_r[k % len(palette_ins_r)] for k,i in enumerate(di_r["Installation"])}
+                                    fig_ins_r = px.bar(di_r,x="Nombre",y="Installation",orientation="h",text="Nombre",
+                                                        color="Installation",color_discrete_map=color_map_ins_r)
+                                    fig_ins_r.update_traces(textposition='outside',cliponaxis=False)
+                                    fig_ins_r.update_layout(title=f"{site_choisi_r} — répartition par installation",title_x=0.5,showlegend=False,
+                                                             xaxis_title="Nombre d'actions",yaxis_title="",
+                                                             margin=dict(t=40,b=10,l=10,r=30),height=320,
+                                                             paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
+                                    st.plotly_chart(fig_ins_r,use_container_width=True,config={'displayModeBar':False})
+                                else:
+                                    st.info("Aucune donnée d'installation à afficher.")
+
+                            st.dataframe(d_site_r.rename(columns={
+                                "Site":"Site","Installation":"Installation","Nombre":"Nombre des actions","Nature":"Nature","Pilote":"Pilote"
+                            }),hide_index=True,use_container_width=True)
+                    else:
+                        st.info("Aucune donnée à afficher pour les graphes.")
+
+            # ================= RAPPORT PDF ASSOCIÉ AU RESPONSABLE =================
+            st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📄 Mon rapport des actions</p>",unsafe_allow_html=True)
+
+            if len(entites_resp) > 1:
+                entite_pdf_choisie = st.selectbox("Périmètre", entites_resp, key="entite_pdf_responsable")
+            else:
+                entite_pdf_choisie = entites_resp[0] if entites_resp else None
+                st.caption(f"Périmètre : {entite_pdf_choisie}")
+
+            if st.button("👁️ Générer mon rapport", use_container_width=True, key="btn_gen_rapport_responsable", type="primary") and entite_pdf_choisie:
+                with st.spinner("Lecture du classeur de codification..."):
+                    classeur, err = codif_charger_classeur(CODIF_SHEET_ID)
+                    if err:
+                        st.session_state["pdf_responsable"] = None
+                        st.error(err)
+                    elif not classeur:
+                        st.session_state["pdf_responsable"] = None
+                        st.warning("Aucun onglet trouvé dans le classeur de codification.")
+                    else:
+                        frames_r = []
+                        for onglet_r, df_brut_r in classeur.items():
+                            valeurs_r = df_brut_r.fillna("").astype(str).values.tolist()
+                            d_r = _detecter_entete_et_nettoyer_codif(valeurs_r)
+                            if not d_r.empty:
+                                d_r["Installation"] = onglet_r
+                                frames_r.append(d_r)
+                        if not frames_r:
+                            st.session_state["pdf_responsable"] = None
+                            st.warning("Aucune donnée exploitable trouvée dans les onglets du classeur.")
+                        else:
+                            df_codif_r = pd.concat(frames_r,ignore_index=True)
+                            df_codif_r["Nature"] = df_codif_r["Code"].map(lambda c: NATURE_PILOTE.get(c,("",""))[0])
+                            codes_ok_r = _codes_pour_pilote(entite_pdf_choisie)
+                            df_filtre_codif_r = df_codif_r[df_codif_r["Code"].isin(codes_ok_r)]
+                            if df_filtre_codif_r.empty:
+                                st.session_state["pdf_responsable"] = None
+                                st.info(f"Aucune action trouvée pour « {entite_pdf_choisie} ».")
+                            else:
+                                try:
+                                    st.session_state["pdf_responsable"] = generer_rapport_pilote_pdf(
+                                        entite_pdf_choisie, df_filtre_codif_r,
+                                        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s"
+                                    )
+                                    st.session_state["nb_actions_responsable"] = len(df_filtre_codif_r)
+                                except Exception as e:
+                                    st.session_state["pdf_responsable"] = None
+                                    st.error(f"Erreur lors de la génération du PDF : {e}")
+
+            if st.session_state.get("pdf_responsable"):
+                st.success(f"{st.session_state.get('nb_actions_responsable',0)} action(s) trouvée(s) pour « {entite_pdf_choisie} ».")
+                afficher_apercu_pdf_grille(st.session_state["pdf_responsable"], colonnes=2)
+                st.download_button(
+                    label="📥 Télécharger mon rapport PDF",
+                    data=st.session_state["pdf_responsable"],
+                    file_name=f"Rapport_{entite_pdf_choisie}_{datetime.date.today().strftime('%d_%m_%Y')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True,
+                    key="dl_responsable"
+                )
+
     # ---- ONGLET 4 : KPI (Visiteur — vue simplifiée en lecture seule) ----
     if tab_kpi and role=="Visiteur":
         with tab_kpi:
@@ -2957,3 +3144,4 @@ if acces_autorise:
                             st.plotly_chart(figv2,use_container_width=True,config={'displayModeBar':False})
                 else:
                     st.info("Aucune donnée à afficher pour les graphes.")
+                    
