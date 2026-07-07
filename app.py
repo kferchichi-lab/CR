@@ -2808,6 +2808,16 @@ if acces_autorise:
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📄 Rapport des actions par Pilote</p>",unsafe_allow_html=True)
 
+            def _deduire_site_installation(nom_installation):
+                """Déduit le site (SGB/MEG) à partir du nom de l'onglet/installation, si celui-ci
+                le mentionne explicitement (ex: 'SGB - Installations électriques')."""
+                n = str(nom_installation).upper()
+                if "SGB" in n:
+                    return "SGB"
+                if "MEG" in n:
+                    return "MEG"
+                return None
+
             entites_pilote_codif = sorted(set(
                 e.strip() for v in NATURE_PILOTE.values() for e in v[1].split("+") if e.strip()
             ))
@@ -2817,38 +2827,85 @@ if acces_autorise:
             with cpil2:
                 st.write("")
                 st.write("")
-                lancer_rapport_pilote = st.button("👁️ Générer",use_container_width=True,key="btn_gen_rapport_pilote",type="primary")
+                charger_classeur_pilote = st.button("🔍 Charger les installations",use_container_width=True,key="btn_charger_classeur_pilote")
 
-            if lancer_rapport_pilote:
+            if charger_classeur_pilote:
                 with st.spinner("Lecture du classeur de codification..."):
                     classeur, err = codif_charger_classeur(CODIF_SHEET_ID)
                     if err:
-                        st.session_state["pdf_pilote"] = None
+                        st.session_state["classeur_codif_pilote"] = None
                         st.error(err)
                     elif not classeur:
-                        st.session_state["pdf_pilote"] = None
+                        st.session_state["classeur_codif_pilote"] = None
                         st.warning("Aucun onglet trouvé dans le classeur de codification.")
                     else:
-                        frames = []
-                        for onglet, df_brut in classeur.items():
-                            valeurs = df_brut.fillna("").astype(str).values.tolist()
-                            d = _detecter_entete_et_nettoyer_codif(valeurs)
-                            if not d.empty:
-                                d["Installation"] = onglet
-                                frames.append(d)
-                        if not frames:
-                            st.session_state["pdf_pilote"] = None
-                            st.warning("Aucune donnée exploitable trouvée dans les onglets du classeur "
-                                       "(colonnes Désignation/Observation/Code introuvables).")
+                        st.session_state["classeur_codif_pilote"] = classeur
+                        st.session_state["pdf_pilote"] = None
+
+            classeur_pilote = st.session_state.get("classeur_codif_pilote")
+
+            if not classeur_pilote:
+                st.info("👆 Cliquez sur « Charger les installations » pour sélectionner précisément "
+                         "le site et l'installation à inclure dans le rapport.")
+            else:
+                frames = []
+                for onglet, df_brut in classeur_pilote.items():
+                    valeurs = df_brut.fillna("").astype(str).values.tolist()
+                    d = _detecter_entete_et_nettoyer_codif(valeurs)
+                    if not d.empty:
+                        d["Installation"] = onglet
+                        frames.append(d)
+
+                if not frames:
+                    st.warning("Aucune donnée exploitable trouvée dans les onglets du classeur "
+                               "(colonnes Désignation/Observation/Code introuvables).")
+                else:
+                    df_codif = pd.concat(frames,ignore_index=True)
+                    df_codif["Nature"] = df_codif["Code"].map(lambda c: NATURE_PILOTE.get(c,("",""))[0])
+                    codes_ok = _codes_pour_pilote(pilote_codif_choisi)
+                    df_pilote_codif = df_codif[df_codif["Code"].isin(codes_ok)]
+
+                    if df_pilote_codif.empty:
+                        st.info(f"Aucune action trouvée pour le pilote « {pilote_codif_choisi} » "
+                                f"(codes recherchés : {', '.join(codes_ok) if codes_ok else '—'}).")
+                    else:
+                        installations_dispo = sorted(df_pilote_codif["Installation"].unique().tolist())
+                        sites_dispo = sorted({
+                            s for s in (_deduire_site_installation(i) for i in installations_dispo) if s
+                        })
+
+                        cfil1,cfil2 = st.columns(2)
+                        with cfil1:
+                            if sites_dispo:
+                                site_filtre_pilote = st.selectbox(
+                                    "Site", ["Tous"]+sites_dispo, key="site_filtre_pilote_codif"
+                                )
+                            else:
+                                site_filtre_pilote = "Tous"
+                        installations_apres_site = [
+                            i for i in installations_dispo
+                            if site_filtre_pilote == "Tous" or _deduire_site_installation(i) == site_filtre_pilote
+                        ]
+                        with cfil2:
+                            installation_filtre_pilote = st.selectbox(
+                                "Installation", ["Toutes"]+installations_apres_site,
+                                key="installation_filtre_pilote_codif"
+                            )
+
+                        if installation_filtre_pilote == "Toutes":
+                            df_filtre_codif = df_pilote_codif[df_pilote_codif["Installation"].isin(installations_apres_site)]
                         else:
-                            df_codif = pd.concat(frames,ignore_index=True)
-                            df_codif["Nature"] = df_codif["Code"].map(lambda c: NATURE_PILOTE.get(c,("",""))[0])
-                            codes_ok = _codes_pour_pilote(pilote_codif_choisi)
-                            df_filtre_codif = df_codif[df_codif["Code"].isin(codes_ok)]
+                            df_filtre_codif = df_pilote_codif[df_pilote_codif["Installation"] == installation_filtre_pilote]
+
+                        lancer_rapport_pilote = st.button(
+                            "👁️ Générer",use_container_width=True,key="btn_gen_rapport_pilote",type="primary"
+                        )
+
+                        if lancer_rapport_pilote:
                             if df_filtre_codif.empty:
                                 st.session_state["pdf_pilote"] = None
                                 st.info(f"Aucune action trouvée pour le pilote « {pilote_codif_choisi} » "
-                                        f"(codes recherchés : {', '.join(codes_ok) if codes_ok else '—'}).")
+                                        f"avec les filtres sélectionnés.")
                             else:
                                 try:
                                     st.session_state["pdf_pilote"] = generer_rapport_pilote_pdf(
@@ -3144,4 +3201,3 @@ if acces_autorise:
                             st.plotly_chart(figv2,use_container_width=True,config={'displayModeBar':False})
                 else:
                     st.info("Aucune donnée à afficher pour les graphes.")
-                    
