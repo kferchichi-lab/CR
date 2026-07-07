@@ -6,6 +6,7 @@ import datetime
 import pytz
 import re
 import time
+import math
 import requests
 import calendar
 import base64
@@ -272,31 +273,130 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
 
     k1 = kpi_data["kpi1"]; k2 = kpi_data["kpi2"]
 
-    # ---- Répartition par site / par installation, puis par nature et par pilote pour chaque site ----
+    # ---- Palettes de couleurs (cohérentes avec le tableau de bord Streamlit) ----
+    COULEURS_SITE = {"SGB": "#1E3A8A", "MEG": "#0EA5E9"}
+    COULEURS_NATURE = {
+        "Technique": "#10B981", "Sécurité": "#F97316", "Organisation": "#84CC16",
+        "Règlementation": "#EAB308", "Documentation": "#EC4899", "Energétique": "#64748B",
+    }
+    COULEURS_PILOTE = {
+        "Maintenance": "#FACC15", "HSE": "#F97316", "BT": "#EF4444",
+        "Chef service BT": "#3B82F6", "DMTN": "#A855F7", "RH": "#92400E", "DG": "#22C55E",
+    }
+
+    # ---- Helpers SVG (donut chart et bar chart horizontal, sans dépendance externe) ----
+    def _polar(cx, cy, r, angle_deg):
+        a = math.radians(angle_deg - 90)
+        return (cx + r * math.cos(a), cy + r * math.sin(a))
+
+    def _donut_path(cx, cy, r_out, r_in, a0, a1):
+        p0o = _polar(cx, cy, r_out, a0)
+        p1o = _polar(cx, cy, r_out, a1)
+        p1i = _polar(cx, cy, r_in, a1)
+        p0i = _polar(cx, cy, r_in, a0)
+        large = 1 if (a1 - a0) > 180 else 0
+        return (f"M {p0o[0]:.2f} {p0o[1]:.2f} "
+                f"A {r_out:.2f} {r_out:.2f} 0 {large} 1 {p1o[0]:.2f} {p1o[1]:.2f} "
+                f"L {p1i[0]:.2f} {p1i[1]:.2f} "
+                f"A {r_in:.2f} {r_in:.2f} 0 {large} 0 {p0i[0]:.2f} {p0i[1]:.2f} Z")
+
+    def _donut_chart(data, color_map, titre="", size=190):
+        """data: dict {label: valeur numérique}. Retourne (svg, legend_html)."""
+        data = {k: v for k, v in data.items() if v and v > 0}
+        total = sum(data.values())
+        if not data or not total:
+            return "", ""
+        cx, cy = size / 2, size / 2 + 14
+        r_out, r_in = size * 0.40, size * 0.40 * 0.58
+        angle = 0.0
+        slices, labels = "", ""
+        for label, val in data.items():
+            pct = val / total * 100
+            a1 = angle + pct / 100 * 360
+            color = color_map.get(label, "#94A3B8")
+            slices += f'<path d="{_donut_path(cx,cy,r_out,r_in,angle,a1)}" fill="{color}" stroke="#ffffff" stroke-width="1.5"/>'
+            if pct >= 4:
+                mid = (angle + a1) / 2
+                lx, ly = _polar(cx, cy, (r_out + r_in) / 2, mid)
+                labels += (f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="11" font-weight="700" '
+                           f'fill="#ffffff" text-anchor="middle" dominant-baseline="middle">{pct:.1f}%</text>')
+            angle = a1
+        titre_svg = (f'<text x="{cx:.1f}" y="16" font-size="12.5" font-weight="700" fill="#0F172A" '
+                     f'text-anchor="middle">{titre}</text>') if titre else ""
+        svg = (f'<svg viewBox="0 0 {size} {size+16}" width="{size}" height="{size+16}" '
+               f'xmlns="http://www.w3.org/2000/svg">{titre_svg}{slices}{labels}</svg>')
+        legend = "".join(
+            f'<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;">'
+            f'<span style="width:11px;height:11px;min-width:11px;border-radius:3px;'
+            f'background:{color_map.get(l,"#94A3B8")};display:inline-block;"></span>'
+            f'<span style="font-size:10pt;color:#334155;">{l}</span></div>'
+            for l in data.keys()
+        )
+        return svg, legend
+
+    def _hbar_chart(data_pct, color_map, width=300, bar_h=18, gap=9, label_w=100):
+        """data_pct: dict {label: pourcentage}, déjà trié décroissant."""
+        if not data_pct:
+            return ""
+        max_pct = max(data_pct.values()) or 1
+        chart_w = width - label_w - 50
+        rows, y = "", 0
+        for label, pct in data_pct.items():
+            bw = max((pct / max_pct) * chart_w, 2)
+            color = color_map.get(label, "#F59E0B")
+            rows += (f'<text x="0" y="{y+bar_h*0.72:.1f}" font-size="9.5" fill="#334155">{label}</text>'
+                      f'<rect x="{label_w}" y="{y}" width="{bw:.1f}" height="{bar_h}" rx="3" fill="{color}"/>'
+                      f'<text x="{label_w+bw+6:.1f}" y="{y+bar_h*0.72:.1f}" font-size="9.5" fill="#334155">{pct:.1f}%</text>')
+            y += bar_h + gap
+        return (f'<svg viewBox="0 0 {width} {y}" width="{width}" height="{y}" '
+                f'xmlns="http://www.w3.org/2000/svg">{rows}</svg>')
+
+    # ---- Section 1 : Actions de contrôle — par site et par installation (source : PointsReserve) ----
+    df_r = df_reserve.copy() if (df_reserve is not None and not df_reserve.empty) else pd.DataFrame()
+    if not df_r.empty and "Nombre" in df_r.columns:
+        df_r["Nombre"] = pd.to_numeric(df_r["Nombre"], errors="coerce").fillna(0)
+
+    site_donut_svg, site_donut_legend = "", ""
+    if not df_r.empty and "Site" in df_r.columns:
+        site_donut_svg, site_donut_legend = _donut_chart(
+            df_r.groupby("Site")["Nombre"].sum().to_dict(), COULEURS_SITE, "Répartition par site", size=210)
+
+    def _ins_donut(site):
+        if df_r.empty or "Installation" not in df_r.columns or "Site" not in df_r.columns:
+            return ""
+        d = df_r[df_r["Site"] == site].groupby("Installation")["Nombre"].sum().to_dict()
+        svg, _ = _donut_chart(d, COULEURS_INS, site, size=185)
+        return svg
+
+    meg_ins_svg = _ins_donut("MEG")
+    sgb_ins_svg = _ins_donut("SGB")
+    toutes_ins = sorted(df_r["Installation"].dropna().unique().tolist()) if (not df_r.empty and "Installation" in df_r.columns) else []
+    ins_legend_commune = "".join(
+        f'<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;">'
+        f'<span style="width:11px;height:11px;min-width:11px;border-radius:3px;'
+        f'background:{COULEURS_INS.get(i,"#94A3B8")};display:inline-block;"></span>'
+        f'<span style="font-size:9.5pt;color:#334155;">{i}</span></div>'
+        for i in toutes_ins
+    )
+
+    # ---- Section 2 : Répartition par site — Nature et Pilote (source : PointsReserveNature) ----
     df_n = df_nature.copy() if (df_nature is not None and not df_nature.empty) else pd.DataFrame()
     if not df_n.empty and "Nombre" in df_n.columns:
         df_n["Nombre"] = pd.to_numeric(df_n["Nombre"], errors="coerce").fillna(0)
 
-    def _rows_par_categorie(df_src, col, couleur):
-        if df_src.empty or col not in df_src.columns or "Nombre" not in df_src.columns:
-            return ""
-        tot = df_src["Nombre"].sum()
-        if not tot:
-            return ""
-        rows = ""
-        for val, grp in df_src.groupby(col)["Nombre"].sum().items():
-            pct = round(grp/tot*100, 1)
-            rows += (f"""<div style="margin-bottom:10px;">
-                <div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;">
-                <span>{val}</span><span>{pct}% ({int(grp)})</span></div>{barre(pct,couleur)}</div>""")
-        return rows
+    def _nature_donut(site):
+        if df_n.empty or "Nature" not in df_n.columns or "Site" not in df_n.columns:
+            return "", ""
+        d = df_n[df_n["Site"] == site].groupby("Nature")["Nombre"].sum().to_dict()
+        return _donut_chart(d, COULEURS_NATURE, f"{site} — % par nature", size=185)
 
-    def _rows_par_pilote(df_src):
-        if df_src.empty or "Pilote" not in df_src.columns or "Nombre" not in df_src.columns:
+    def _pilote_bar(site):
+        if df_n.empty or "Pilote" not in df_n.columns or "Site" not in df_n.columns:
             return ""
-        total = df_src["Nombre"].sum()
+        sub = df_n[df_n["Site"] == site]
+        total = sub["Nombre"].sum()
         compte = {}
-        for _, row in df_src.iterrows():
+        for _, row in sub.iterrows():
             for e in str(row.get("Pilote", "")).split("+"):
                 e = e.strip()
                 if not e:
@@ -304,30 +404,13 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
                 compte[e] = compte.get(e, 0) + row["Nombre"]
         if not compte or not total:
             return ""
-        rows = ""
-        for pilote, nb in sorted(compte.items(), key=lambda x: -x[1]):
-            pct = round(nb/total*100, 1)
-            rows += (f"""<div style="margin-bottom:10px;">
-                <div style="display:flex;justify-content:space-between;font-size:10pt;margin-bottom:3px;">
-                <span>{pilote}</span><span>{pct}% ({int(nb)})</span></div>{barre(pct,'#F59E0B')}</div>""")
-        return rows
+        pct_dict = {k: round(v / total * 100, 1) for k, v in sorted(compte.items(), key=lambda x: -x[1])}
+        return _hbar_chart(pct_dict, COULEURS_PILOTE, width=300)
 
-    def _sous_df_site(site):
-        if df_n.empty or "Site" not in df_n.columns:
-            return pd.DataFrame()
-        return df_n[df_n["Site"] == site]
-
-    site_global_rows = _rows_par_categorie(df_n, "Site", "#1E3A8A")
-    installation_global_rows = _rows_par_categorie(df_n, "Installation", "#0EA5E9")
-
-    df_sgb = _sous_df_site("SGB")
-    df_meg = _sous_df_site("MEG")
-
-    sgb_nature_rows = _rows_par_categorie(df_sgb, "Nature", "#10B981")
-    sgb_pilote_rows = _rows_par_pilote(df_sgb)
-    meg_nature_rows = _rows_par_categorie(df_meg, "Nature", "#10B981")
-    meg_pilote_rows = _rows_par_pilote(df_meg)
-
+    sgb_nature_svg, sgb_nature_legend = _nature_donut("SGB")
+    meg_nature_svg, meg_nature_legend = _nature_donut("MEG")
+    sgb_pilote_svg = _pilote_bar("SGB")
+    meg_pilote_svg = _pilote_bar("MEG")
 
 
     carto_html = ""
@@ -418,42 +501,58 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
         Répartition des actions de contrôle relevées, par site et par installation.</p>
 
-        <div style="display:flex;gap:30px;">
-            <div style="flex:1;">
-                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par site</p>
-                {site_global_rows if site_global_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+        <div style="display:flex;justify-content:center;gap:30px;align-items:center;margin-bottom:10px;">
+            <div>
+                {site_donut_svg if site_donut_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
+            <div>{site_donut_legend}</div>
+        </div>
+
+        <p style="font-weight:700;font-size:12pt;color:#0F172A;text-align:center;margin:20px 0 12px 0;">
+        Répartition par installation</p>
+
+        <div style="display:flex;justify-content:center;align-items:center;gap:15px;">
+            <div style="flex:1;text-align:center;">
+                {meg_ins_svg if meg_ins_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée MEG</p>"}
+            </div>
+            <div style="flex:0 0 170px;">{ins_legend_commune}</div>
+            <div style="flex:1;text-align:center;">
+                {sgb_ins_svg if sgb_ins_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée SGB</p>"}
+            </div>
+        </div>
+    </div>
+
+    <div class="page">
+        <div class="category-title">Répartition par site : Nature et Pilote</div>
+        <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
+        Répartition des actions de contrôle relevées, par nature et par pilote, pour chaque site.</p>
+
+        <p style="font-weight:700;font-size:12pt;color:#0F172A;margin:10px 0 12px 0;">SGB</p>
+        <div style="display:flex;align-items:center;gap:25px;margin-bottom:25px;">
+            <div style="flex:0 0 auto;">
+                {sgb_nature_svg if sgb_nature_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+            <div style="flex:0 0 130px;">{sgb_nature_legend}</div>
             <div style="flex:1;">
-                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">Répartition par installation</p>
-                {installation_global_rows if installation_global_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+                {sgb_pilote_svg if sgb_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
         </div>
 
-        <p style="font-weight:700;font-size:12pt;color:#0F172A;text-align:center;margin:25px 0 15px 0;">
-        Répartition par nature et par pilote</p>
-
-        <div style="display:flex;flex-wrap:wrap;gap:25px;">
-            <div style="flex:1 1 45%;min-width:250px;">
-                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">SGB — par nature</p>
-                {sgb_nature_rows if sgb_nature_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+        <p style="font-weight:700;font-size:12pt;color:#0F172A;margin:10px 0 12px 0;">MEG</p>
+        <div style="display:flex;align-items:center;gap:25px;">
+            <div style="flex:0 0 auto;">
+                {meg_nature_svg if meg_nature_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
-            <div style="flex:1 1 45%;min-width:250px;">
-                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">SGB — par pilote</p>
-                {sgb_pilote_rows if sgb_pilote_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
-            </div>
-            <div style="flex:1 1 45%;min-width:250px;">
-                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">MEG — par nature</p>
-                {meg_nature_rows if meg_nature_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
-            </div>
-            <div style="flex:1 1 45%;min-width:250px;">
-                <p style="font-weight:700;font-size:11pt;color:#0F172A;margin-bottom:10px;">MEG — par pilote</p>
-                {meg_pilote_rows if meg_pilote_rows else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            <div style="flex:0 0 130px;">{meg_nature_legend}</div>
+            <div style="flex:1;">
+                {meg_pilote_svg if meg_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
         </div>
     </div>
 
     </body></html>
     """
+
 
     return HTML(string=html_content).write_pdf()
 
