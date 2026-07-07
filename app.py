@@ -301,12 +301,16 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
                 f"A {r_in:.2f} {r_in:.2f} 0 {large} 0 {p0i[0]:.2f} {p0i[1]:.2f} Z")
 
     def _donut_chart(data, color_map, titre="", size=190):
-        """data: dict {label: valeur numérique}. Retourne (svg, legend_html)."""
+        """data: dict {label: valeur numérique}. Retourne (svg, legend_html).
+        Les pourcentages des petites parts sont affichés à l'extérieur (avec un
+        trait de rappel) pour rester lisibles ; les grandes parts gardent le
+        pourcentage centré à l'intérieur de l'anneau."""
         data = {k: v for k, v in data.items() if v and v > 0}
         total = sum(data.values())
         if not data or not total:
             return "", ""
-        cx, cy = size / 2, size / 2 + 14
+        pad = 34  # marge latérale pour les étiquettes extérieures
+        cx, cy = size / 2 + pad, size / 2 + 18
         r_out, r_in = size * 0.40, size * 0.40 * 0.58
         angle = 0.0
         slices, labels = "", ""
@@ -315,21 +319,33 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
             a1 = angle + pct / 100 * 360
             color = color_map.get(label, "#94A3B8")
             slices += f'<path d="{_donut_path(cx,cy,r_out,r_in,angle,a1)}" fill="{color}" stroke="#ffffff" stroke-width="1.5"/>'
-            if pct >= 4:
-                mid = (angle + a1) / 2
+            mid = (angle + a1) / 2
+            if pct >= 6:
+                # part assez grande : pourcentage centré, en blanc, à l'intérieur de l'anneau
                 lx, ly = _polar(cx, cy, (r_out + r_in) / 2, mid)
                 labels += (f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="11" font-weight="700" '
                            f'fill="#ffffff" text-anchor="middle" dominant-baseline="middle">{pct:.1f}%</text>')
+            else:
+                # petite part : trait de rappel + pourcentage à l'extérieur, dans la couleur de la part
+                p0 = _polar(cx, cy, r_out, mid)
+                p1 = _polar(cx, cy, r_out + 12, mid)
+                anchor = "start" if p1[0] >= cx else "end"
+                tx = p1[0] + (4 if anchor == "start" else -4)
+                labels += (f'<line x1="{p0[0]:.1f}" y1="{p0[1]:.1f}" x2="{p1[0]:.1f}" y2="{p1[1]:.1f}" '
+                           f'stroke="{color}" stroke-width="1.2"/>'
+                           f'<text x="{tx:.1f}" y="{p1[1]:.1f}" font-size="9.5" font-weight="700" '
+                           f'fill="{color}" text-anchor="{anchor}" dominant-baseline="middle">{pct:.1f}%</text>')
             angle = a1
         titre_svg = (f'<text x="{cx:.1f}" y="16" font-size="12.5" font-weight="700" fill="#0F172A" '
                      f'text-anchor="middle">{titre}</text>') if titre else ""
-        svg = (f'<svg viewBox="0 0 {size} {size+16}" width="{size}" height="{size+16}" '
+        w_total = size + 2 * pad
+        svg = (f'<svg viewBox="0 0 {w_total} {size+22}" width="{w_total}" height="{size+22}" '
                f'xmlns="http://www.w3.org/2000/svg">{titre_svg}{slices}{labels}</svg>')
         legend = "".join(
             f'<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;">'
             f'<span style="width:11px;height:11px;min-width:11px;border-radius:3px;'
             f'background:{color_map.get(l,"#94A3B8")};display:inline-block;"></span>'
-            f'<span style="font-size:10pt;color:#334155;">{l}</span></div>'
+            f'<span style="font-size:10pt;color:#334155;white-space:nowrap;">{l}</span></div>'
             for l in data.keys()
         )
         return svg, legend
@@ -497,7 +513,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
     {carto_html}
 
     <div class="page">
-        <div class="category-title">Répartition par installation</div>
+        <div class="category-title">Répartition par site et par installation</div>
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
         Répartition des actions de contrôle relevées, par site et par installation.</p>
 
@@ -532,7 +548,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
             <div style="flex:0 0 auto;">
                 {sgb_nature_svg if sgb_nature_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
-            <div style="flex:0 0 130px;">{sgb_nature_legend}</div>
+            <div style="flex:0 0 150px;">{sgb_nature_legend}</div>
             <div style="flex:1;">
                 {sgb_pilote_svg if sgb_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
@@ -543,7 +559,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
             <div style="flex:0 0 auto;">
                 {meg_nature_svg if meg_nature_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
-            <div style="flex:0 0 130px;">{meg_nature_legend}</div>
+            <div style="flex:0 0 150px;">{meg_nature_legend}</div>
             <div style="flex:1;">
                 {meg_pilote_svg if meg_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
