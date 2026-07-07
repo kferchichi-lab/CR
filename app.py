@@ -497,7 +497,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
     {carto_html}
 
     <div class="page">
-        <div class="category-title">Répartition par site et par installation</div>
+        <div class="category-title">Répartition par installation</div>
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
         Répartition des actions de contrôle relevées, par site et par installation.</p>
 
