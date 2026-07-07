@@ -355,14 +355,14 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
 
 
         <div class="kpi-card" style="border-left-color:#0EA5E9;">
-            <p class="kpi-title">1. Taux de réalisation 2026</p>1. Taux de réalisation 2026</p>
+            <p class="kpi-title">1. Taux de réalisation 2026</p>
             <p class="kpi-desc">Proportion des visites réalisées dont l'écart entre la date réelle de contrôle
             et l'échéance théorique initiale du cycle n'excède pas 1 mois, par rapport au nombre total
             de visites réalisées.</p>
             <p class="kpi-value">{k1['taux']}%</p>
             {barre(k1['taux'], '#10B981')}
-            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{6 réalisés / 6 non réalisés
-            — sur 12 visites planifiées</p>
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k1['realises']} réalisés / {k1['restants']} non réalisés
+            — sur {k1['total']} visites planifiées</p>
         </div>
 
          <div class="kpi-card">
