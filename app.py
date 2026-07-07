@@ -2921,7 +2921,7 @@ if acces_autorise:
             st.markdown(f"<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Indicateurs — {nom_resp}</p>",unsafe_allow_html=True)
             st.markdown(
                 "<div style='background:#EFF6FF;border-left:4px solid #2a78d6;padding:10px 14px;border-radius:6px;margin-bottom:14px;'>"
-                "<p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>Consultation seule</p>"
+                "<p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>Consultation seule : Veuillez sélectionner votre site</p>"
                 "</div>", unsafe_allow_html=True)
 
             with st.spinner("Chargement des actions par nature..."):
