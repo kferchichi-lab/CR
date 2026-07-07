@@ -348,8 +348,24 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
 
         <div class="category-title">Indicateurs de performance</div>
 
-        <div class="kpi-card">
-            <p class="kpi-title">1. Taux de réalisation 2026</p>
+       
+
+
+
+
+
+        <div class="kpi-card" style="border-left-color:#0EA5E9;">
+            <p class="kpi-title">1. Taux de réalisation 2026</p>1. Taux de réalisation 2026</p>
+            <p class="kpi-desc">Proportion des visites réalisées dont l'écart entre la date réelle de contrôle
+            et l'échéance théorique initiale du cycle n'excède pas 1 mois, par rapport au nombre total
+            de visites réalisées.</p>
+            <p class="kpi-value">{k1['taux']}%</p>
+            {barre(k1['taux'], '#10B981')}
+            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['respectes']} respectés / {k2['respectes']} réalisés</p>
+        </div>
+
+         <div class="kpi-card">
+            <p class="kpi-title">2. Taux de respect de délai de visite</p>
             <p class="kpi-desc">Proportion des contrôles réglementaires dont l'échéance théorique est comprise
             entre le 01/01/2026 et le 31/12/2026, effectivement réalisés (date réelle de visite enregistrée)
             par rapport au nombre total de contrôles dus sur cette période.</p>
@@ -360,18 +376,6 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, carto_b64, logo_url):
         </div>
 
 
-
-
-
-        <div class="kpi-card" style="border-left-color:#0EA5E9;">
-            <p class="kpi-title">2. Taux de respect de délai de visite</p>
-            <p class="kpi-desc">Proportion des visites réalisées dont l'écart entre la date réelle de contrôle
-            et l'échéance théorique initiale du cycle n'excède pas 1 mois, par rapport au nombre total
-            de visites réalisées.</p>
-            <p class="kpi-value">{k1['taux']}%</p>
-            {barre(k1['taux'], '#10B981')}
-            <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['respectes']} respectés / {k2['respectes']} réalisés</p>
-        </div>
     </div>
 
     {carto_html}
@@ -1439,7 +1443,7 @@ if acces_autorise:
         else:
             st.warning("Aucun rapport ne correspond aux critères sélectionnés.")
 
-        st.markdown("<br><hr style='border-color:#E2E8F0;'><p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📊 Analyse globale</p>",unsafe_allow_html=True)
+        st.markdown("<br><hr style='border-color:#E2E8F0;'><p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📊 Gestion des rapports</p>",unsafe_allow_html=True)
         if not df_rapports.empty:
             col_sc=[c for c in df_rapports.columns if "site" in c.lower()]
             col_cc=[c for c in df_rapports.columns if "ins" in c.lower()]
