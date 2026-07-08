@@ -897,10 +897,39 @@ st.html("""<style>
     div[data-baseweb="select"]>div{border:none!important;background-color:transparent!important;}
     div[data-baseweb="select"]:hover{border-color:#0EA5E9!important;background-color:#FFFFFF!important;box-shadow:0 0 0 3px rgba(14,165,233,0.12)!important;}
     div[data-baseweb="select"] span{color:#0F172A!important;font-weight:500!important;}
-    div[data-testid="stTabs"] button{font-size:14px!important;font-weight:600!important;color:#64748B!important;background-color:#F8FAFC!important;padding:10px 24px!important;margin-right:8px!important;border-radius:8px 8px 0px 0px!important;border:1px solid #E2E8F0!important;border-bottom:none!important;}
-    div[data-testid="stTabs"] button:hover{color:#1E3A8A!important;background-color:#F1F5F9!important;}
-    div[data-testid="stTabs"] button[aria-selected="true"]{color:#1E3A8A!important;background-color:#E0F2FE!important;border-color:#bae6fd!important;border-bottom:none!important;box-shadow:inset 0 3px 0px #0EA5E9!important;}
+    div[data-testid="stTabs"] [data-baseweb="tab-list"]{gap:12px!important;flex-wrap:wrap!important;border-bottom:none!important;}
+    div[data-testid="stTabs"] button{
+        font-size:17px!important;
+        font-weight:700!important;
+        color:#475569!important;
+        background:linear-gradient(180deg,#FFFFFF 0%,#F1F5F9 100%)!important;
+        padding:16px 32px!important;
+        margin-right:0!important;
+        border-radius:14px!important;
+        border:2px solid #E2E8F0!important;
+        box-shadow:0 2px 6px rgba(15,23,42,0.05)!important;
+        transition:all 0.18s ease-in-out!important;
+    }
+    div[data-testid="stTabs"] button p{font-size:17px!important;font-weight:700!important;}
+    div[data-testid="stTabs"] button:hover{
+        color:#FFFFFF!important;
+        background:linear-gradient(135deg,#3B82F6 0%,#1E3A8A 100%)!important;
+        border-color:#1E3A8A!important;
+        transform:translateY(-2px)!important;
+        box-shadow:0 6px 14px rgba(30,58,138,0.25)!important;
+    }
+    div[data-testid="stTabs"] button[aria-selected="true"]{
+        color:#FFFFFF!important;
+        background:linear-gradient(135deg,#0EA5E9 0%,#1E3A8A 100%)!important;
+        border-color:#1E3A8A!important;
+        box-shadow:0 6px 16px rgba(14,165,233,0.35)!important;
+        transform:translateY(-1px)!important;
+    }
     div[data-testid="stTabs"] [data-baseweb="tab-highlight-bar"]{background-color:transparent!important;}
+    div[data-testid="stTabs"] [data-baseweb="tab-border"]{background-color:transparent!important;}
+
+    /* Centrage global des titres de section (paragraphes en gras 1.2rem) */
+    p[style*="font-size:1.2rem"]{text-align:center!important;width:100%!important;display:block!important;}
 </style>""")
 
 st.markdown("""<style>
