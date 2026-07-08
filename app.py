@@ -897,12 +897,21 @@ st.html("""<style>
     div[data-baseweb="select"]>div{border:none!important;background-color:transparent!important;}
     div[data-baseweb="select"]:hover{border-color:#0EA5E9!important;background-color:#FFFFFF!important;box-shadow:0 0 0 3px rgba(14,165,233,0.12)!important;}
     div[data-baseweb="select"] span{color:#0F172A!important;font-weight:500!important;}
-    div[data-testid="stTabs"] [data-baseweb="tab-list"]{gap:12px!important;flex-wrap:wrap!important;border-bottom:none!important;}
-    div[data-testid="stTabs"] button{
+    div[data-testid="stTabs"] [data-baseweb="tab-list"],
+    [data-baseweb="tab-list"],
+    div[role="tablist"]{
+        gap:12px!important;
+        flex-wrap:wrap!important;
+        border-bottom:none!important;
+    }
+    div[data-testid="stTabs"] button,
+    button[data-baseweb="tab"],
+    [role="tab"]{
         font-size:17px!important;
         font-weight:700!important;
         color:#475569!important;
         background:linear-gradient(180deg,#FFFFFF 0%,#F1F5F9 100%)!important;
+        background-color:#F8FAFC!important;
         padding:16px 32px!important;
         margin-right:0!important;
         border-radius:14px!important;
@@ -910,17 +919,32 @@ st.html("""<style>
         box-shadow:0 2px 6px rgba(15,23,42,0.05)!important;
         transition:all 0.18s ease-in-out!important;
     }
-    div[data-testid="stTabs"] button p{font-size:17px!important;font-weight:700!important;}
-    div[data-testid="stTabs"] button:hover{
+    div[data-testid="stTabs"] button p,
+    button[data-baseweb="tab"] p,
+    [role="tab"] p,
+    div[data-testid="stTabs"] button div,
+    button[data-baseweb="tab"] div,
+    [role="tab"] div{
+        font-size:17px!important;
+        font-weight:700!important;
+        color:inherit!important;
+    }
+    div[data-testid="stTabs"] button:hover,
+    button[data-baseweb="tab"]:hover,
+    [role="tab"]:hover{
         color:#FFFFFF!important;
         background:linear-gradient(135deg,#3B82F6 0%,#1E3A8A 100%)!important;
+        background-color:#1E3A8A!important;
         border-color:#1E3A8A!important;
         transform:translateY(-2px)!important;
         box-shadow:0 6px 14px rgba(30,58,138,0.25)!important;
     }
-    div[data-testid="stTabs"] button[aria-selected="true"]{
+    div[data-testid="stTabs"] button[aria-selected="true"],
+    button[data-baseweb="tab"][aria-selected="true"],
+    [role="tab"][aria-selected="true"]{
         color:#FFFFFF!important;
         background:linear-gradient(135deg,#0EA5E9 0%,#1E3A8A 100%)!important;
+        background-color:#1E3A8A!important;
         border-color:#1E3A8A!important;
         box-shadow:0 6px 16px rgba(14,165,233,0.35)!important;
         transform:translateY(-1px)!important;
@@ -929,7 +953,12 @@ st.html("""<style>
     div[data-testid="stTabs"] [data-baseweb="tab-border"]{background-color:transparent!important;}
 
     /* Centrage global des titres de section (paragraphes en gras 1.2rem) */
-    p[style*="font-size:1.2rem"]{text-align:center!important;width:100%!important;display:block!important;}
+    p[style*="font-size:1.2rem"],
+    div[data-testid="stMarkdownContainer"] p[style*="font-size:1.2rem"]{
+        text-align:center!important;
+        width:100%!important;
+        display:block!important;
+    }
 </style>""")
 
 st.markdown("""<style>
@@ -3230,3 +3259,5 @@ if acces_autorise:
                             st.plotly_chart(figv2,use_container_width=True,config={'displayModeBar':False})
                 else:
                     st.info("Aucune donnée à afficher pour les graphes.")
+
+
