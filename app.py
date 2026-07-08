@@ -904,18 +904,28 @@ st.html("""<style>
         flex-wrap:wrap!important;
         border-bottom:none!important;
     }
+    /* Supprime la barre de soulignement native (rouge/couleur du theme) */
+    div[data-testid="stTabs"] [data-baseweb="tab-list"] > div:not([role="tab"]),
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight"],
+    div[data-testid="stTabs"] [data-baseweb="tab-highlight-bar"],
+    div[data-testid="stTabs"] [data-baseweb="tab-border"]{
+        display:none!important;
+        height:0!important;
+        background:transparent!important;
+        box-shadow:none!important;
+        border:none!important;
+    }
     div[data-testid="stTabs"] button,
     button[data-baseweb="tab"],
     [role="tab"]{
         font-size:17px!important;
         font-weight:700!important;
         color:#475569!important;
-        background:linear-gradient(180deg,#FFFFFF 0%,#F1F5F9 100%)!important;
-        background-color:#F8FAFC!important;
+        background-color:#FFFFFF!important;
         padding:16px 32px!important;
         margin-right:0!important;
         border-radius:14px!important;
-        border:2px solid #E2E8F0!important;
+        border:2px solid #CBD5E1!important;
         box-shadow:0 2px 6px rgba(15,23,42,0.05)!important;
         transition:all 0.18s ease-in-out!important;
     }
@@ -933,24 +943,18 @@ st.html("""<style>
     button[data-baseweb="tab"]:hover,
     [role="tab"]:hover{
         color:#FFFFFF!important;
-        background:linear-gradient(135deg,#3B82F6 0%,#1E3A8A 100%)!important;
-        background-color:#1E3A8A!important;
-        border-color:#1E3A8A!important;
-        transform:translateY(-2px)!important;
+        background-color:#3B82F6!important;
+        border:2px solid #1E3A8A!important;
         box-shadow:0 6px 14px rgba(30,58,138,0.25)!important;
     }
     div[data-testid="stTabs"] button[aria-selected="true"],
     button[data-baseweb="tab"][aria-selected="true"],
     [role="tab"][aria-selected="true"]{
         color:#FFFFFF!important;
-        background:linear-gradient(135deg,#0EA5E9 0%,#1E3A8A 100%)!important;
         background-color:#1E3A8A!important;
-        border-color:#1E3A8A!important;
+        border:2px solid #1E3A8A!important;
         box-shadow:0 6px 16px rgba(14,165,233,0.35)!important;
-        transform:translateY(-1px)!important;
     }
-    div[data-testid="stTabs"] [data-baseweb="tab-highlight-bar"]{background-color:transparent!important;}
-    div[data-testid="stTabs"] [data-baseweb="tab-border"]{background-color:transparent!important;}
 
     /* Centrage global des titres de section (paragraphes en gras 1.2rem) */
     p[style*="font-size:1.2rem"],
@@ -3259,5 +3263,3 @@ if acces_autorise:
                             st.plotly_chart(figv2,use_container_width=True,config={'displayModeBar':False})
                 else:
                     st.info("Aucune donnée à afficher pour les graphes.")
-
-
