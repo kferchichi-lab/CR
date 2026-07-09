@@ -3717,4 +3717,4 @@ if acces_autorise:
                                                  paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                             st.plotly_chart(figv2,use_container_width=True,config={'displayModeBar':False})
                 else:
-                    st.info("Aucune donnée à afficher pour les graphes.")!
+                    st.info("Aucune donnée à afficher pour les graphes.")
