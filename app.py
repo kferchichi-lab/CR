@@ -381,7 +381,7 @@ def generer_calendrier_controle_pdf(df_calendrier: pd.DataFrame, annee_reference
             <img src="{logo_url}"/>
             <span class="header-title">Calendrier de contrôle réglementaire</span>
         </div>
-        <p class="subtitle"> — Année : {annee_reference}</p>
+        <p class="subtitle">Année : {annee_reference}</p>
         <table>
             <thead><tr>
                 <th>Sites</th><th>CI</th><th>Les installations</th><th>Nbr visite/An</th><th>Nbr jour</th>
