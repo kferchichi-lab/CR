@@ -262,7 +262,7 @@ def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: i
         dates_planifiees = ligne.pop("_dates_planifiees")
         if len(dates_planifiees):
             ligne["Dates planifiées"] = " | ".join(
-                (f"📌 {pd.Timestamp(d).strftime('%d/%m/%Y')}"
+                (f"★ {pd.Timestamp(d).strftime('%d/%m/%Y')}"
                  if (idx_ligne == idx_ligne_proche and idx_date == idx_date_proche)
                  else pd.Timestamp(d).strftime("%d/%m/%Y"))
                 for idx_date, d in enumerate(dates_planifiees)
@@ -348,17 +348,17 @@ def generer_calendrier_controle_pdf(df_calendrier: pd.DataFrame, annee_reference
     <html><head><style>
         @page {{ size: A4 landscape; margin: 10mm 12mm; }}
         * {{ box-sizing: border-box; }}
-        body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color:#1E293B; font-size:8.3pt; }}
-        .header {{ display:flex; align-items:center; gap:12px; margin-bottom:8px; border-bottom:2px solid #1E3A8A; padding-bottom:6px; }}
+        body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color:#1E293B; font-size:9pt; }}
+        .header {{ display:flex; align-items:center; gap:12px; margin-bottom:10px; border-bottom:2px solid #1E3A8A; padding-bottom:6px; }}
         .header img {{ height:28px; }}
         .header-texts {{ display:flex; flex-direction:column; }}
         .header-title {{ font-size:14pt; font-weight:800; color:#1E3A8A; text-transform:uppercase; }}
         .header-company {{ font-size:9pt; font-weight:700; color:#334155; }}
         .header-entite {{ font-size:8.3pt; font-weight:700; color:#0EA5E9; text-transform:uppercase; letter-spacing:0.3px; }}
-        .subtitle {{ font-size:8.5pt; color:#64748B; margin:0 0 8px 0; }}
-        table {{ width:100%; border-collapse:collapse; }}
-        th, td {{ border:1px solid #CBD5E1; padding:4px 6px; text-align:left; }}
-        th {{ background:#1E3A8A; color:white; font-size:8pt; text-transform:uppercase; }}
+        .subtitle {{ font-size:9pt; color:#64748B; margin:0 0 10px 0; }}
+        table {{ width:100%; border-collapse:collapse; margin-bottom:14px; }}
+        th, td {{ border:1px solid #CBD5E1; padding:8px 9px; text-align:left; }}
+        th {{ background:#1E3A8A; color:white; font-size:8.5pt; text-transform:uppercase; }}
         .site-cell {{ font-weight:800; text-align:center; background:#F1F5F9; color:#1E3A8A; }}
         .ci-cell {{ font-weight:700; text-align:center; }}
         .center {{ text-align:center; }}
