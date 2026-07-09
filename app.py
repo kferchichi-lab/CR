@@ -276,18 +276,18 @@ def calculer_taux_realisation(df_calendrier: pd.DataFrame) -> dict:
     (et non une simple moyenne des % par installation), pour MEG, SGB et le global.
     Ex: MEG 5 visites réalisées sur 6 attendues -> 83.3% (et non la moyenne des % par ligne).
     """
-    if df_calendrier.empty or "_nb_realisees_capped" not in df_calendrier.columns:
+    if df_calendrier.empty or "Nbr visites réalisées en 2026" not in df_calendrier.columns:
         return {"MEG": 0.0, "SGB": 0.0, "Global": 0.0}
 
     resultat = {}
     for site in ("MEG", "SGB"):
         df_site = df_calendrier[df_calendrier["Site"] == site]
         attendu_total = df_site["Nbr visite/An"].sum()
-        realise_total = df_site["_nb_realisees_capped"].sum()
+        realise_total = df_site["Nbr visites réalisées en 2026"].sum()
         resultat[site] = round(realise_total / attendu_total * 100, 1) if attendu_total else 0.0
 
     attendu_global = df_calendrier["Nbr visite/An"].sum()
-    realise_global = df_calendrier["_nb_realisees_capped"].sum()
+    realise_global = df_calendrier["Nbr visites réalisées en 2026"].sum()
     resultat["Global"] = round(realise_global / attendu_global * 100, 1) if attendu_global else 0.0
     return resultat
 
