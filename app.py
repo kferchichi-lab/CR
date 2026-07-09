@@ -233,20 +233,6 @@ def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: i
             else:
                 dates_planifiees = [pd.Timestamp(d) + pd.DateOffset(months=periodicite_mois) for d in dates_realisees]
 
-            # Repère, parmi les dates planifiées, celle la plus proche de la date du jour
-            # (= prochaine échéance à réaliser) pour y accoler un petit symbole dans le calendrier.
-            if len(dates_planifiees):
-                aujourd_hui = pd.Timestamp(datetime.date.today())
-                idx_proche = min(range(len(dates_planifiees)),
-                                  key=lambda i: abs((pd.Timestamp(dates_planifiees[i]) - aujourd_hui).days))
-                dates_planifiees_txt = " | ".join(
-                    (f"📌 {pd.Timestamp(d).strftime('%d/%m/%Y')}" if i == idx_proche
-                     else pd.Timestamp(d).strftime("%d/%m/%Y"))
-                    for i, d in enumerate(dates_planifiees)
-                )
-            else:
-                dates_planifiees_txt = "-"
-
             lignes.append({
                 "Site": site,
                 "CI": CI_CODES.get(installation, ""),
@@ -256,9 +242,33 @@ def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: i
                 "Dates réalisées": (" | ".join(pd.Timestamp(d).strftime("%d/%m/%Y") for d in dates_realisees)
                                      if len(dates_realisees) else "-"),
                 col_realisation: realisation_txt,
-                "Dates planifiées": dates_planifiees_txt,
+                "Dates planifiées": "-",
                 "Nbr visites réalisées en 2026": min(nb_realisees_annee, attendu), 
+                "_dates_planifiees": list(dates_planifiees),
             })
+
+    # Repère, sur l'ensemble du calendrier (tous sites/installations confondus), la SEULE
+    # date planifiée la plus proche de la date du jour (= prochaine échéance à réaliser en priorité)
+    # pour y accoler un petit symbole. Toutes les autres dates restent affichées sans symbole.
+    aujourd_hui = pd.Timestamp(datetime.date.today())
+    idx_ligne_proche, idx_date_proche, ecart_min = None, None, None
+    for idx_ligne, ligne in enumerate(lignes):
+        for idx_date, d in enumerate(ligne["_dates_planifiees"]):
+            ecart = abs((pd.Timestamp(d) - aujourd_hui).days)
+            if ecart_min is None or ecart < ecart_min:
+                ecart_min, idx_ligne_proche, idx_date_proche = ecart, idx_ligne, idx_date
+
+    for idx_ligne, ligne in enumerate(lignes):
+        dates_planifiees = ligne.pop("_dates_planifiees")
+        if len(dates_planifiees):
+            ligne["Dates planifiées"] = " | ".join(
+                (f"📌 {pd.Timestamp(d).strftime('%d/%m/%Y')}"
+                 if (idx_ligne == idx_ligne_proche and idx_date == idx_date_proche)
+                 else pd.Timestamp(d).strftime("%d/%m/%Y"))
+                for idx_date, d in enumerate(dates_planifiees)
+            )
+        else:
+            ligne["Dates planifiées"] = "-"
 
     return pd.DataFrame(lignes)
 
