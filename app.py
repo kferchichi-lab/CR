@@ -13,7 +13,7 @@ import calendar
 import base64
 import io
 from weasyprint import HTML
-import fitz  # PyMuPDF
+import fitz
 
 def afficher_apercu_pdf(pdf_bytes, hauteur=800):
     try:
@@ -31,11 +31,6 @@ def afficher_apercu_pdf(pdf_bytes, hauteur=800):
         st.info("Vous pouvez tout de même télécharger le rapport ci-dessous.")
     
 def afficher_apercu_pdf_grille(pdf_bytes, colonnes=2, largeur_colonne=380):
-    """
-    Affiche l'aperçu d'un PDF sous forme de grille (par défaut 2 colonnes),
-    chaque colonne présentant une page du rapport, réduisant ainsi la taille
-    d'affichage par rapport à un aperçu pleine largeur page par page.
-    """
     try:
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
         nb_pages = len(doc)
@@ -54,9 +49,6 @@ def afficher_apercu_pdf_grille(pdf_bytes, colonnes=2, largeur_colonne=380):
 
 
 def generer_rapport_equipements_pdf(df_exigences, site_filtre):
-    """
-    Génère un rapport PDF de 5 pages pour un site spécifique (SGB ou MEG).
-    """
     installations = [
         "Installations électriques",
         "Equipements de levage",
@@ -65,10 +57,8 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
         "Appareil pression de gaz"
     ]
     
-    # 1. Filtrer uniquement les lignes de type "Equipement"
     df_eq = df_exigences[df_exigences.iloc[:, 0].astype(str).str.strip().str.lower() == "equipement"]
     
-    # 2. Filtrer selon le Site (Colonne index 1)
     df_eq = df_eq[df_eq.iloc[:, 1].astype(str).str.strip().str.upper() == site_filtre.upper()]
     logo_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s"
     
@@ -191,17 +181,11 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
     <body>
     """
 
-# ------------------------------------------------------------------------------
-# BLOC 2 — Calcul du tableau + génération PDF / Excel
-# ------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+# Calcul du tableau + génération PDF / Excel
+# --------------------------------------------------------------------------------
 
 def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: int = None) -> pd.DataFrame:
-    """
-    Construit le tableau récapitulatif (Site / CI / Installation / Nbr visite-An /
-    Nbr jour / Dates réalisées / Réalisation / Dates planifiées) à partir de
-    l'onglet 'Rapports', avec la même logique de détection de colonnes que le
-    reste de l'app (col_ins_r, col_date_r, col_reelle, col_prochaine_r...).
-    """
     if annee_reference is None:
         annee_reference = datetime.date.today().year
     if df_rapports.empty:
@@ -234,19 +218,15 @@ def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: i
     for site in ("MEG", "SGB"):
         df_site = df[df["_site"] == site]
         for installation in ORDRE_CI:
-            attendu = round(12 / PERIODICITE.get(installation, 12))  # visites attendues / an
+            attendu = round(12 / PERIODICITE.get(installation, 12)) 
             df_grp = df_site[df_site["_installation"] == installation].sort_values("_date")
 
-            # Dernières dates réalisées connues (les `attendu` plus récentes, toutes années confondues)
             dates_realisees = sorted(df_grp["_date"].dropna().unique())[-attendu:] if not df_grp.empty else []
 
-            # Réalisées PENDANT l'année de référence -> détermine le % / statut
             nb_realisees_annee = df_grp[df_grp["_date"].dt.year == annee_reference]["_date"].nunique()
             pct = round(min(nb_realisees_annee, attendu) / attendu * 100) if attendu else 0
             realisation_txt = f"{pct}%" if nb_realisees_annee > 0 else "A planifier"
 
-            # Dates planifiées : valeur manuelle (colonne "prochaine") si dispo,
-            # sinon +périodicité de l'installation (6 mois pour l'électrique, 12 mois pour les autres)
             periodicite_mois = PERIODICITE.get(installation, 12)
             if not df_grp.empty and df_grp["_date_prochaine_manuelle"].notna().any():
                 dates_planifiees = sorted(df_grp["_date_prochaine_manuelle"].dropna().unique())[-attendu:]
@@ -264,18 +244,13 @@ def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: i
                 col_realisation: realisation_txt,
                 "Dates planifiées": (" | ".join(pd.Timestamp(d).strftime("%d/%m/%Y") for d in dates_planifiees)
                                       if len(dates_planifiees) else "-"),
-                "Nbr visites réalisées en 2026": min(nb_realisees_annee, attendu),  # colonne technique (masquée à l'affichage/export)
+                "Nbr visites réalisées en 2026": min(nb_realisees_annee, attendu), 
             })
 
     return pd.DataFrame(lignes)
 
 
 def calculer_taux_realisation(df_calendrier: pd.DataFrame) -> dict:
-    """
-    Calcule le taux de réalisation pondéré par le nombre réel de visites attendues
-    (et non une simple moyenne des % par installation), pour MEG, SGB et le global.
-    Ex: MEG 5 visites réalisées sur 6 attendues -> 83.3% (et non la moyenne des % par ligne).
-    """
     if df_calendrier.empty or "Nbr visites réalisées en 2026" not in df_calendrier.columns:
         return {"MEG": 0.0, "SGB": 0.0, "Global": 0.0}
 
@@ -414,14 +389,12 @@ def generer_calendrier_controle_pdf(df_calendrier: pd.DataFrame, annee_reference
 
 
 def generer_calendrier_controle_excel(df_calendrier: pd.DataFrame, annee_reference: int) -> bytes:
-    """Génère le fichier Excel du calendrier de contrôle (styles + fusion de la colonne Site + graphiques)."""
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
     from openpyxl.chart import BarChart, DoughnutChart, Reference
     from openpyxl.chart.marker import DataPoint
     from openpyxl.chart.label import DataLabelList
 
-    # Colonnes techniques (préfixées par "_") utilisées uniquement pour les calculs internes
     df_export = df_calendrier[[c for c in df_calendrier.columns if not c.startswith("_")]]
     taux = calculer_taux_realisation(df_calendrier)
 
@@ -455,7 +428,6 @@ def generer_calendrier_controle_excel(df_calendrier: pd.DataFrame, annee_referen
                 cell.border = border
                 cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-        # Fusion de la colonne "Site" par groupe de 5 installations (ordre déterministe = ORDRE_CI)
         nb_installations = len(ORDRE_CI)
         for i in range(0, len(df_export), nb_installations):
             r1 = header_row + 1 + i
