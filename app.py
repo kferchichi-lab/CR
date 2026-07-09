@@ -2469,7 +2469,7 @@ if acces_autorise:
                 fig_gauge = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=taux_global,
-                    number={'suffix': "%", 'font': {'size': 50, 'color': "#0F172A"}},
+                    number={'suffix': "%", 'font': {'size': 80, 'color': "#0F172A"}},
                     title={'text': f"Taux global {annee_ref_calendrier}", 'font': {'size': 14, 'color': "#334155"}},
                     gauge={
                         'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#94A3B8"},
