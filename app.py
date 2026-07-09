@@ -2421,12 +2421,12 @@ if acces_autorise:
 # BLOC 3 — UI Streamlit (à insérer dans `with tab_exigences:`)
 # ------------------------------------------------------------------------------
         st.divider()
-        st.markdown("### 🗓️ Calendrier de contrôle prochain")
-        st.caption("Tableau récapitulatif des visites réalisées et planifiées, par site et par installation.")
+        st.markdown("### 🗓️ Calendrier de contrôle réglementaire")
+
 
         annee_ref_calendrier = datetime.date.today().year
 
-        if st.button("🗓️ Générer le calendrier de contrôle", use_container_width=True, key="btn_gen_calendrier"):
+        if st.button("🗓️ Générer le calendrier", use_container_width=True, key="btn_gen_calendrier"):
             with st.spinner("Construction du calendrier..."):
                 df_calendrier = construire_calendrier_controle(df_rapports, annee_ref_calendrier)
                 if df_calendrier.empty:
