@@ -233,6 +233,20 @@ def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: i
             else:
                 dates_planifiees = [pd.Timestamp(d) + pd.DateOffset(months=periodicite_mois) for d in dates_realisees]
 
+            # Repère, parmi les dates planifiées, celle la plus proche de la date du jour
+            # (= prochaine échéance à réaliser) pour y accoler un petit symbole dans le calendrier.
+            if len(dates_planifiees):
+                aujourd_hui = pd.Timestamp(datetime.date.today())
+                idx_proche = min(range(len(dates_planifiees)),
+                                  key=lambda i: abs((pd.Timestamp(dates_planifiees[i]) - aujourd_hui).days))
+                dates_planifiees_txt = " | ".join(
+                    (f"📌 {pd.Timestamp(d).strftime('%d/%m/%Y')}" if i == idx_proche
+                     else pd.Timestamp(d).strftime("%d/%m/%Y"))
+                    for i, d in enumerate(dates_planifiees)
+                )
+            else:
+                dates_planifiees_txt = "-"
+
             lignes.append({
                 "Site": site,
                 "CI": CI_CODES.get(installation, ""),
@@ -242,8 +256,7 @@ def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: i
                 "Dates réalisées": (" | ".join(pd.Timestamp(d).strftime("%d/%m/%Y") for d in dates_realisees)
                                      if len(dates_realisees) else "-"),
                 col_realisation: realisation_txt,
-                "Dates planifiées": (" | ".join(pd.Timestamp(d).strftime("%d/%m/%Y") for d in dates_planifiees)
-                                      if len(dates_planifiees) else "-"),
+                "Dates planifiées": dates_planifiees_txt,
                 "Nbr visites réalisées en 2026": min(nb_realisees_annee, attendu), 
             })
 
@@ -328,7 +341,10 @@ def generer_calendrier_controle_pdf(df_calendrier: pd.DataFrame, annee_reference
         body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color:#1E293B; font-size:8.3pt; }}
         .header {{ display:flex; align-items:center; gap:12px; margin-bottom:8px; border-bottom:2px solid #1E3A8A; padding-bottom:6px; }}
         .header img {{ height:28px; }}
+        .header-texts {{ display:flex; flex-direction:column; }}
         .header-title {{ font-size:14pt; font-weight:800; color:#1E3A8A; text-transform:uppercase; }}
+        .header-company {{ font-size:9pt; font-weight:700; color:#334155; }}
+        .header-entite {{ font-size:8.3pt; font-weight:700; color:#0EA5E9; text-transform:uppercase; letter-spacing:0.3px; }}
         .subtitle {{ font-size:8.5pt; color:#64748B; margin:0 0 8px 0; }}
         table {{ width:100%; border-collapse:collapse; }}
         th, td {{ border:1px solid #CBD5E1; padding:4px 6px; text-align:left; }}
@@ -354,7 +370,11 @@ def generer_calendrier_controle_pdf(df_calendrier: pd.DataFrame, annee_reference
     <body>
         <div class="header">
             <img src="{logo_url}"/>
-            <span class="header-title">Calendrier de contrôle réglementaire</span>
+            <div class="header-texts">
+                <span class="header-title">Calendrier de contrôle réglementaire</span>
+                <span class="header-company">Tunisie Profilés d'Aluminium</span>
+                <span class="header-entite">DMTN - BT</span>
+            </div>
         </div>
         <p class="subtitle">Année : {annee_reference}</p>
         <table>
@@ -652,30 +672,37 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
         svg = (f'<svg viewBox="0 0 {w_total} {size+22}" width="{w_total}" height="{size+22}" '
                f'xmlns="http://www.w3.org/2000/svg">{titre_svg}{slices}{labels}</svg>')
         legend = "".join(
-            f'<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;">'
+            f'<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:9px;">'
+            f'<div style="display:flex;align-items:center;gap:7px;">'
             f'<span style="width:11px;height:11px;min-width:11px;border-radius:3px;'
             f'background:{color_map.get(l,"#94A3B8")};display:inline-block;"></span>'
             f'<span style="font-size:10pt;color:#334155;white-space:nowrap;">{l}</span></div>'
-            for l in data.keys()
+            f'<span style="font-size:10pt;font-weight:800;color:#0F172A;white-space:nowrap;">{(v/total*100):.1f}%</span>'
+            f'</div>'
+            for l, v in data.items()
         )
         return svg, legend
 
-    def _hbar_chart(data_pct, color_map, width=300, bar_h=18, gap=9, label_w=100):
-        """data_pct: dict {label: pourcentage}, déjà trié décroissant."""
+    def _bar_list_html(data_pct, color_map):
+        """data_pct: dict {label: pourcentage}, déjà trié décroissant.
+        Présentation HTML (et non SVG) : libellé complet + barre + pourcentage en gras
+        bien séparés, pour rester lisibles quel que soit le nombre de pilotes ou la
+        longueur de leur nom (ex. « Chef service BT »)."""
         if not data_pct:
             return ""
-        max_pct = max(data_pct.values()) or 1
-        chart_w = width - label_w - 50
-        rows, y = "", 0
+        rows = ""
         for label, pct in data_pct.items():
-            bw = max((pct / max_pct) * chart_w, 2)
             color = color_map.get(label, "#F59E0B")
-            rows += (f'<text x="0" y="{y+bar_h*0.72:.1f}" font-size="9.5" fill="#334155">{label}</text>'
-                      f'<rect x="{label_w}" y="{y}" width="{bw:.1f}" height="{bar_h}" rx="3" fill="{color}"/>'
-                      f'<text x="{label_w+bw+6:.1f}" y="{y+bar_h*0.72:.1f}" font-size="9.5" fill="#334155">{pct:.1f}%</text>')
-            y += bar_h + gap
-        return (f'<svg viewBox="0 0 {width} {y}" width="{width}" height="{y}" '
-                f'xmlns="http://www.w3.org/2000/svg">{rows}</svg>')
+            rows += f"""
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px;">
+                <div style="flex:0 0 118px;font-size:9.3pt;font-weight:600;color:#334155;
+                    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{label}</div>
+                <div style="flex:1;background:#E2E8F0;border-radius:5px;height:15px;overflow:hidden;">
+                    <div style="height:100%;width:{pct}%;background:{color};border-radius:5px;"></div>
+                </div>
+                <div style="flex:0 0 48px;text-align:right;font-size:9.8pt;font-weight:800;color:#0F172A;">{pct:.1f}%</div>
+            </div>"""
+        return rows
 
     # ---- Section 1 : Actions de contrôle — par site et par installation (source : PointsReserve) ----
     df_r = df_reserve.copy() if (df_reserve is not None and not df_reserve.empty) else pd.DataFrame()
@@ -731,7 +758,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
         if not compte or not total:
             return ""
         pct_dict = {k: round(v / total * 100, 1) for k, v in sorted(compte.items(), key=lambda x: -x[1])}
-        return _hbar_chart(pct_dict, COULEURS_PILOTE, width=300)
+        return _bar_list_html(pct_dict, COULEURS_PILOTE)
 
     sgb_nature_svg, sgb_nature_legend = _nature_donut("SGB")
     meg_nature_svg, meg_nature_legend = _nature_donut("MEG")
@@ -860,6 +887,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
             </div>
             <div style="flex:0 0 150px;">{sgb_nature_legend}</div>
             <div style="flex:1;">
+                <p style="font-size:9.5pt;font-weight:700;color:#64748B;margin:0 0 10px 0;text-transform:uppercase;">% par pilote</p>
                 {sgb_pilote_svg if sgb_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
         </div>
@@ -871,6 +899,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
             </div>
             <div style="flex:0 0 150px;">{meg_nature_legend}</div>
             <div style="flex:1;">
+                <p style="font-size:9.5pt;font-weight:700;color:#64748B;margin:0 0 10px 0;text-transform:uppercase;">% par pilote</p>
                 {meg_pilote_svg if meg_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
         </div>
@@ -3688,4 +3717,4 @@ if acces_autorise:
                                                  paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)')
                             st.plotly_chart(figv2,use_container_width=True,config={'displayModeBar':False})
                 else:
-                    st.info("Aucune donnée à afficher pour les graphes.")
+                    st.info("Aucune donnée à afficher pour les graphes.")!
