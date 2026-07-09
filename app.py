@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 import datetime
 import pytz
@@ -189,6 +190,342 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
     </head>
     <body>
     """
+
+# ------------------------------------------------------------------------------
+# BLOC 2 — Calcul du tableau + génération PDF / Excel
+# ------------------------------------------------------------------------------
+
+def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: int = None) -> pd.DataFrame:
+    """
+    Construit le tableau récapitulatif (Site / CI / Installation / Nbr visite-An /
+    Nbr jour / Dates réalisées / Réalisation / Dates planifiées) à partir de
+    l'onglet 'Rapports', avec la même logique de détection de colonnes que le
+    reste de l'app (col_ins_r, col_date_r, col_reelle, col_prochaine_r...).
+    """
+    if annee_reference is None:
+        annee_reference = datetime.date.today().year
+    if df_rapports.empty:
+        return pd.DataFrame()
+
+    col_ins       = [c for c in df_rapports.columns if "ins" in c.lower()]
+    col_date      = [c for c in df_rapports.columns if "date" in c.lower()
+                      and "reelle" not in c.lower() and "réelle" not in c.lower()
+                      and "prochaine" not in c.lower() and "planifi" not in c.lower()]
+    col_site      = [c for c in df_rapports.columns if "site" in c.lower()]
+    col_reelle    = [c for c in df_rapports.columns if "reelle" in c.lower() or "réelle" in c.lower()]
+    col_prochaine = [c for c in df_rapports.columns if "prochaine" in c.lower()]
+
+    if not (col_ins and col_date and col_site):
+        return pd.DataFrame()
+
+    df = df_rapports.copy()
+    df["_date_brute"]  = pd.to_datetime(df[col_date[0]], dayfirst=True, errors="coerce")
+    df["_date_reelle"] = pd.to_datetime(df[col_reelle[0]], dayfirst=True, errors="coerce") if col_reelle else pd.NaT
+    df["_date_prochaine_manuelle"] = (pd.to_datetime(df[col_prochaine[0]], dayfirst=True, errors="coerce")
+                                       if col_prochaine else pd.NaT)
+    df["_date"] = df["_date_reelle"].combine_first(df["_date_brute"])
+    df = df.dropna(subset=["_date"])
+    df["_site"] = df[col_site[0]].astype(str).str.strip().str.upper()
+    df["_installation"] = df[col_ins[0]].astype(str).str.strip()
+
+    col_realisation = f"Réalisation {annee_reference}"
+    lignes = []
+
+    for site in ("MEG", "SGB"):
+        df_site = df[df["_site"] == site]
+        for installation in ORDRE_CI:
+            attendu = round(12 / PERIODICITE.get(installation, 12))  # visites attendues / an
+            df_grp = df_site[df_site["_installation"] == installation].sort_values("_date")
+
+            # Dernières dates réalisées connues (les `attendu` plus récentes, toutes années confondues)
+            dates_realisees = sorted(df_grp["_date"].dropna().unique())[-attendu:] if not df_grp.empty else []
+
+            # Réalisées PENDANT l'année de référence -> détermine le % / statut
+            nb_realisees_annee = df_grp[df_grp["_date"].dt.year == annee_reference]["_date"].nunique()
+            pct = round(min(nb_realisees_annee, attendu) / attendu * 100) if attendu else 0
+            realisation_txt = f"{pct}%" if nb_realisees_annee > 0 else "À planifier"
+
+            # Dates planifiées : valeur manuelle (colonne "prochaine") si dispo,
+            # sinon +périodicité de l'installation (6 mois pour l'électrique, 12 mois pour les autres)
+            periodicite_mois = PERIODICITE.get(installation, 12)
+            if not df_grp.empty and df_grp["_date_prochaine_manuelle"].notna().any():
+                dates_planifiees = sorted(df_grp["_date_prochaine_manuelle"].dropna().unique())[-attendu:]
+            else:
+                dates_planifiees = [pd.Timestamp(d) + pd.DateOffset(months=periodicite_mois) for d in dates_realisees]
+
+            lignes.append({
+                "Site": site,
+                "CI": CI_CODES.get(installation, ""),
+                "Installation": installation,
+                "Nbr visite/An": attendu,
+                "Nbr jour": NB_JOURS_VISITE.get(site, {}).get(installation, "-"),
+                "Dates réalisées": (" | ".join(pd.Timestamp(d).strftime("%d/%m/%Y") for d in dates_realisees)
+                                     if len(dates_realisees) else "-"),
+                col_realisation: realisation_txt,
+                "Dates planifiées": (" | ".join(pd.Timestamp(d).strftime("%d/%m/%Y") for d in dates_planifiees)
+                                      if len(dates_planifiees) else "-"),
+                "_nb_realisees_capped": min(nb_realisees_annee, attendu),  # colonne technique (masquée à l'affichage/export)
+            })
+
+    return pd.DataFrame(lignes)
+
+
+def calculer_taux_realisation(df_calendrier: pd.DataFrame) -> dict:
+    """
+    Calcule le taux de réalisation pondéré par le nombre réel de visites attendues
+    (et non une simple moyenne des % par installation), pour MEG, SGB et le global.
+    Ex: MEG 5 visites réalisées sur 6 attendues -> 83.3% (et non la moyenne des % par ligne).
+    """
+    if df_calendrier.empty or "_nb_realisees_capped" not in df_calendrier.columns:
+        return {"MEG": 0.0, "SGB": 0.0, "Global": 0.0}
+
+    resultat = {}
+    for site in ("MEG", "SGB"):
+        df_site = df_calendrier[df_calendrier["Site"] == site]
+        attendu_total = df_site["Nbr visite/An"].sum()
+        realise_total = df_site["_nb_realisees_capped"].sum()
+        resultat[site] = round(realise_total / attendu_total * 100, 1) if attendu_total else 0.0
+
+    attendu_global = df_calendrier["Nbr visite/An"].sum()
+    realise_global = df_calendrier["_nb_realisees_capped"].sum()
+    resultat["Global"] = round(realise_global / attendu_global * 100, 1) if attendu_global else 0.0
+    return resultat
+
+
+def generer_calendrier_controle_pdf(df_calendrier: pd.DataFrame, annee_reference: int) -> bytes:
+    """Génère le PDF du calendrier de contrôle (paysage, une ligne par installation, Site fusionné)."""
+    import math
+
+    col_realisation = f"Réalisation {annee_reference}"
+    logo_url = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s"
+
+    lignes_html = ""
+    for site in df_calendrier["Site"].unique():
+        df_site = df_calendrier[df_calendrier["Site"] == site].reset_index(drop=True)
+        for i, row in df_site.iterrows():
+            pct_val = row[col_realisation]
+            if pct_val == "À planifier":
+                couleur = "#94A3B8"
+            else:
+                pct_num = int(str(pct_val).replace("%", "") or 0)
+                couleur = "#16A34A" if pct_num >= 80 else "#F97316" if pct_num >= 50 else "#EF4444"
+
+            lignes_html += "<tr>"
+            if i == 0:
+                lignes_html += f"<td rowspan='{len(df_site)}' class='site-cell'>{site}</td>"
+            lignes_html += f"""
+                <td class="ci-cell">{row['CI']}</td>
+                <td>{row['Installation']}</td>
+                <td class="center">{row['Nbr visite/An']}</td>
+                <td class="center">{row['Nbr jour']}</td>
+                <td class="center">{row['Dates réalisées']}</td>
+                <td class="center" style="color:{couleur};font-weight:700;">{pct_val}</td>
+                <td class="center planifiee">{row['Dates planifiées']}</td>
+            </tr>"""
+
+    # ----- Bloc graphiques : taux de réalisation par site (barres horizontales) + taux global (anneau) -----
+    taux = calculer_taux_realisation(df_calendrier)
+    taux_meg, taux_sgb, taux_global = taux.get("MEG", 0.0), taux.get("SGB", 0.0), taux.get("Global", 0.0)
+
+    couleurs_site = {"MEG": "#2563EB", "SGB": "#059669"}
+    barres_html = ""
+    for site_lbl, val in (("MEG", taux_meg), ("SGB", taux_sgb)):
+        barres_html += f"""
+        <div class="bar-row">
+            <div class="bar-label">{site_lbl}</div>
+            <div class="bar-track">
+                <div class="bar-fill" style="width:{val}%; background:{couleurs_site[site_lbl]};"></div>
+            </div>
+            <div class="bar-value">{val}%</div>
+        </div>"""
+
+    r_anneau = 68
+    circonf = 2 * math.pi * r_anneau
+    dash_val = circonf * (taux_global / 100)
+
+    html_content = f"""
+    <html><head><style>
+        @page {{ size: A4 landscape; margin: 15mm 12mm; }}
+        body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color:#1E293B; font-size:9.5pt; }}
+        .header {{ display:flex; align-items:center; gap:12px; margin-bottom:14px; border-bottom:2px solid #1E3A8A; padding-bottom:10px; }}
+        .header img {{ height:34px; }}
+        .header-title {{ font-size:16pt; font-weight:800; color:#1E3A8A; text-transform:uppercase; }}
+        .subtitle {{ font-size:9.5pt; color:#64748B; margin:0 0 14px 0; }}
+        table {{ width:100%; border-collapse:collapse; }}
+        th, td {{ border:1px solid #CBD5E1; padding:7px 8px; text-align:left; }}
+        th {{ background:#1E3A8A; color:white; font-size:9pt; text-transform:uppercase; }}
+        .site-cell {{ font-weight:800; text-align:center; background:#F1F5F9; color:#1E3A8A; }}
+        .ci-cell {{ font-weight:700; text-align:center; }}
+        .center {{ text-align:center; }}
+        .planifiee {{ font-weight:700; }}
+        tr:nth-child(even) td:not(.site-cell) {{ background:#F8FAFC; }}
+
+        .charts-page {{ page-break-before: always; }}
+        .charts-title {{ font-size:14pt; font-weight:800; color:#1E3A8A; margin-bottom:18px; text-align:center; }}
+        .charts-wrap {{ display:flex; gap:30px; align-items:center; }}
+        .charts-left {{ flex:1.4; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:24px; }}
+        .charts-left-title {{ font-size:11pt; font-weight:700; color:#0F172A; margin-bottom:20px; text-align:center; }}
+        .bar-row {{ display:flex; align-items:center; margin-bottom:22px; }}
+        .bar-label {{ width:60px; font-weight:700; color:#0F172A; }}
+        .bar-track {{ flex:1; height:26px; background:#E2E8F0; border-radius:6px; overflow:hidden; }}
+        .bar-fill {{ height:100%; border-radius:6px; }}
+        .bar-value {{ width:55px; text-align:right; font-weight:800; color:#0F172A; }}
+        .charts-right {{ flex:1; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:24px; text-align:center; }}
+        .charts-right-title {{ font-size:11pt; font-weight:700; color:#0F172A; margin-bottom:16px; }}
+    </style></head>
+    <body>
+        <div class="header">
+            <img src="{logo_url}"/>
+            <span class="header-title">Calendrier de contrôle réglementaire</span>
+        </div>
+        <p class="subtitle">Généré le {datetime.date.today().strftime('%d/%m/%Y')} — Année de référence : {annee_reference}</p>
+        <table>
+            <thead><tr>
+                <th>Sites</th><th>CI</th><th>Les installations</th><th>Nbr visite/An</th><th>Nbr jour</th>
+                <th>Les visites réalisées</th><th>Réalisation {annee_reference}</th><th>Les visites planifiées</th>
+            </tr></thead>
+            <tbody>{lignes_html}</tbody>
+        </table>
+
+        <div class="charts-page">
+            <div class="charts-title">Taux de réalisation des contrôles — {annee_reference}</div>
+            <div class="charts-wrap">
+                <div class="charts-left">
+                    <div class="charts-left-title">Taux de réalisation par site</div>
+                    {barres_html}
+                </div>
+                <div class="charts-right">
+                    <div class="charts-right-title">Taux global {annee_reference}</div>
+                    <svg width="200" height="200" viewBox="0 0 180 180">
+                        <circle cx="90" cy="90" r="{r_anneau}" fill="none" stroke="#E2E8F0" stroke-width="16"/>
+                        <circle cx="90" cy="90" r="{r_anneau}" fill="none" stroke="#1E3A8A" stroke-width="16"
+                                stroke-linecap="round"
+                                stroke-dasharray="{dash_val:.1f} {circonf:.1f}"
+                                transform="rotate(-90 90 90)"/>
+                        <text x="90" y="98" text-anchor="middle" font-size="30" font-weight="800" fill="#0F172A">{taux_global}%</text>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </body></html>
+    """
+    return HTML(string=html_content).write_pdf()
+
+
+def generer_calendrier_controle_excel(df_calendrier: pd.DataFrame, annee_reference: int) -> bytes:
+    """Génère le fichier Excel du calendrier de contrôle (styles + fusion de la colonne Site + graphiques)."""
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.chart import BarChart, DoughnutChart, Reference
+    from openpyxl.chart.marker import DataPoint
+    from openpyxl.chart.label import DataLabelList
+
+    # Colonnes techniques (préfixées par "_") utilisées uniquement pour les calculs internes
+    df_export = df_calendrier[[c for c in df_calendrier.columns if not c.startswith("_")]]
+    taux = calculer_taux_realisation(df_calendrier)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df_export.to_excel(writer, index=False, sheet_name="Calendrier", startrow=1)
+        ws = writer.sheets["Calendrier"]
+
+        nb_cols = len(df_export.columns)
+        ws.cell(row=1, column=1, value=f"Calendrier de contrôle réglementaire — Année {annee_reference}")
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=nb_cols)
+        ws.cell(row=1, column=1).font = Font(size=14, bold=True, color="1E3A8A")
+        ws.cell(row=1, column=1).alignment = Alignment(horizontal="center")
+
+        header_row = 2
+        header_fill = PatternFill("solid", fgColor="1E3A8A")
+        header_font = Font(color="FFFFFF", bold=True)
+        thin = Side(style="thin", color="CBD5E1")
+        border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+        for col_idx in range(1, nb_cols + 1):
+            cell = ws.cell(row=header_row, column=col_idx)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = border
+
+        for row_idx in range(header_row + 1, header_row + 1 + len(df_export)):
+            for col_idx in range(1, nb_cols + 1):
+                cell = ws.cell(row=row_idx, column=col_idx)
+                cell.border = border
+                cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+        # Fusion de la colonne "Site" par groupe de 5 installations (ordre déterministe = ORDRE_CI)
+        nb_installations = len(ORDRE_CI)
+        for i in range(0, len(df_export), nb_installations):
+            r1 = header_row + 1 + i
+            r2 = header_row + nb_installations + i
+            ws.merge_cells(start_row=r1, start_column=1, end_row=r2, end_column=1)
+            ws.cell(row=r1, column=1).font = Font(bold=True, color="1E3A8A")
+
+        largeurs = [10, 6, 26, 12, 10, 26, 18, 26]
+        for i, largeur in enumerate(largeurs, start=1):
+            ws.column_dimensions[get_column_letter(i)].width = largeur
+
+        # ================= FEUILLE "Taux de réalisation" (graphiques) =================
+        ws_g = writer.book.create_sheet("Taux de réalisation")
+        ws_g["A1"] = f"Taux de réalisation des contrôles — {annee_reference}"
+        ws_g.merge_cells("A1:D1")
+        ws_g["A1"].font = Font(size=14, bold=True, color="1E3A8A")
+        ws_g["A1"].alignment = Alignment(horizontal="center")
+
+        # --- Données pour la barre horizontale (par site) ---
+        ws_g["A3"] = "Site"; ws_g["B3"] = "Taux (%)"
+        ws_g["A3"].font = header_font; ws_g["A3"].fill = header_fill
+        ws_g["B3"].font = header_font; ws_g["B3"].fill = header_fill
+        ws_g["A4"] = "MEG"; ws_g["B4"] = taux.get("MEG", 0.0)
+        ws_g["A5"] = "SGB"; ws_g["B5"] = taux.get("SGB", 0.0)
+
+        bar = BarChart()
+        bar.type = "bar"  # barres horizontales
+        bar.title = f"Taux de réalisation par site — {annee_reference}"
+        bar.y_axis.title = None
+        bar.x_axis.title = "Taux (%)"
+        bar.x_axis.scaling.min = 0
+        bar.x_axis.scaling.max = 100
+        data_bar = Reference(ws_g, min_col=2, min_row=3, max_row=5)
+        cats_bar = Reference(ws_g, min_col=1, min_row=4, max_row=5)
+        bar.add_data(data_bar, titles_from_data=True)
+        bar.set_categories(cats_bar)
+        serie_bar = bar.series[0]
+        pt_meg = DataPoint(idx=0); pt_meg.graphicalProperties.solidFill = "2563EB"
+        pt_sgb = DataPoint(idx=1); pt_sgb.graphicalProperties.solidFill = "059669"
+        serie_bar.data_points = [pt_meg, pt_sgb]
+        serie_bar.dLbls = DataLabelList()
+        serie_bar.dLbls.showVal = True
+        bar.height, bar.width = 8.5, 16
+        bar.legend = None
+        ws_g.add_chart(bar, "D3")
+
+        # --- Données pour l'anneau (taux global) ---
+        ws_g["A8"] = "Répartition"; ws_g["B8"] = "Valeur"
+        ws_g["A8"].font = header_font; ws_g["A8"].fill = header_fill
+        ws_g["B8"].font = header_font; ws_g["B8"].fill = header_fill
+        ws_g["A9"] = "Réalisé"; ws_g["B9"] = taux.get("Global", 0.0)
+        ws_g["A10"] = "Restant"; ws_g["B10"] = round(100 - taux.get("Global", 0.0), 1)
+
+        doughnut = DoughnutChart()
+        doughnut.title = f"Taux global {annee_reference} : {taux.get('Global', 0.0)}%"
+        data_don = Reference(ws_g, min_col=2, min_row=9, max_row=10)
+        cats_don = Reference(ws_g, min_col=1, min_row=9, max_row=10)
+        doughnut.add_data(data_don, titles_from_data=False)
+        doughnut.set_categories(cats_don)
+        serie_don = doughnut.series[0]
+        pt_real = DataPoint(idx=0); pt_real.graphicalProperties.solidFill = "1E3A8A"
+        pt_reste = DataPoint(idx=1); pt_reste.graphicalProperties.solidFill = "E2E8F0"
+        serie_don.data_points = [pt_real, pt_reste]
+        doughnut.height, doughnut.width = 8.5, 10
+        ws_g.add_chart(doughnut, "D21")
+
+        ws_g.column_dimensions["A"].width = 14
+        ws_g.column_dimensions["B"].width = 12
+
+    output.seek(0)
+    return output.getvalue()
 
     for ins in installations:
         # Filtrer par installation parmi les équipements du site
@@ -865,6 +1202,33 @@ COULEURS_INS = {
     "Sécurité incendie":         "#e34948",
     "Installations de gaz":      "#eda100",
     "Appareil pression de gaz":  "#4a3aa7",
+}
+# Code interne (CI) de chaque type d'installation — adapte librement les libellés
+CI_CODES = {
+    "Installations de gaz":       "B1",
+    "Installations électriques":  "B2",
+    "Equipements de levage":      "B3",
+    "Appareil pression de gaz":   "A1",
+    "Sécurité incendie":          "A2",
+}
+# Ordre d'affichage dans le tableau (reprend celui de ta capture)
+ORDRE_CI = [
+    "Installations de gaz",
+    "Installations électriques",
+    "Equipements de levage",
+    "Appareil pression de gaz",
+    "Sécurité incendie",
+]
+
+# Durée de visite en jours, par site et par installation.
+# ⚠️ Cette donnée n'existe dans aucune feuille actuelle de ton Google Sheet :
+# soit tu la fixes ici "en dur", soit (mieux) tu ajoutes une colonne "Nbr_jour"
+# dans l'onglet Exigences et tu remplaces ce dict par une lecture de cette colonne.
+NB_JOURS_VISITE = {
+    "SGB": {"Installations de gaz": 1, "Installations électriques": 3, "Equipements de levage": 6,
+            "Appareil pression de gaz": 1, "Sécurité incendie": 2},
+    "MEG": {"Installations de gaz": 1, "Installations électriques": 3, "Equipements de levage": 6,
+            "Appareil pression de gaz": 1, "Sécurité incendie": 1},
 }
 MOIS_FR = ["","Janvier","Février","Mars","Avril","Mai","Juin",
            "Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
@@ -1847,7 +2211,7 @@ if acces_autorise:
                     else:
                         # Admin : édition de la date de dernière visite ET de la prochaine échéance
                         st.markdown("""<div style='background:#EFF6FF;border-left:4px solid #2a78d6;padding:10px 14px;border-radius:6px;margin-bottom:10px;'>
-                            <p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>✏️ Mode administrateur — Modifiez la <b>Date de dernière visite</b> et/ou la <b>Prochaine échéance</b> puis sauvegardez. Par défaut, la prochaine échéance est calculée automatiquement selon la périodicité ; toute date saisie ici la remplace.</p>
+                            <p style='margin:0;font-size:12px;color:#1e40af;font-weight:600;'>✏️ Mode administrateur</p>
                         </div>""",unsafe_allow_html=True)
                         cols_resp=[]
                         if col_site_r:  cols_resp.append(col_site_r[0])
@@ -2055,6 +2419,91 @@ if acces_autorise:
         st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;margin-bottom:15px;'>📌 Exigences réglementaires</p>", unsafe_allow_html=True)
 
         df_exig = lire_exigences()
+
+# ------------------------------------------------------------------------------
+# BLOC 3 — UI Streamlit (à insérer dans `with tab_exigences:`)
+# ------------------------------------------------------------------------------
+        st.divider()
+        st.markdown("### 🗓️ Calendrier de contrôle prochain")
+        st.caption("Tableau récapitulatif des visites réalisées et planifiées, par site et par installation.")
+
+        annee_ref_calendrier = datetime.date.today().year
+
+        if st.button("🗓️ Générer le calendrier de contrôle", use_container_width=True, key="btn_gen_calendrier"):
+            with st.spinner("Construction du calendrier..."):
+                df_calendrier = construire_calendrier_controle(df_rapports, annee_ref_calendrier)
+                if df_calendrier.empty:
+                    st.warning("Aucune donnée exploitable pour construire le calendrier.")
+                    st.session_state["df_calendrier"] = None
+                else:
+                    st.session_state["df_calendrier"] = df_calendrier
+
+        if st.session_state.get("df_calendrier") is not None:
+            df_cal = st.session_state["df_calendrier"]
+            st.dataframe(df_cal, hide_index=True, use_container_width=True)
+
+            # ----- Taux de réalisation 2026 : barres horizontales par site + infographie globale -----
+            taux = calculer_taux_realisation(df_cal)
+            taux_meg = taux.get("MEG", 0.0)
+            taux_sgb = taux.get("SGB", 0.0)
+            taux_global = taux.get("Global", 0.0)
+
+            st.markdown(f"#### 📊 Taux de réalisation des contrôles — {annee_ref_calendrier}")
+            col_bars, col_gauge = st.columns([2, 1])
+
+            with col_bars:
+                df_bars = pd.DataFrame({"Site": ["MEG", "SGB"], "Taux (%)": [taux_meg, taux_sgb]})
+                fig_bars = px.bar(
+                    df_bars, x="Taux (%)", y="Site", text="Taux (%)", color="Site",
+                    orientation="h",
+                    color_discrete_map={"MEG": "#2563EB", "SGB": "#059669"},
+                    range_x=[0, 100],
+                )
+                fig_bars.update_traces(texttemplate='%{text}%', textposition='outside', cliponaxis=False)
+                fig_bars.update_layout(
+                    title=f"Taux de réalisation par site — {annee_ref_calendrier}", title_x=0.5,
+                    showlegend=False, xaxis_title="Taux (%)", yaxis_title="",
+                    margin=dict(t=40, b=10, l=10, r=30), height=280,
+                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                )
+                st.plotly_chart(fig_bars, use_container_width=True, config={'displayModeBar': False})
+
+            with col_gauge:
+                fig_gauge = go.Figure(go.Indicator(
+                    mode="gauge+number",
+                    value=taux_global,
+                    number={'suffix': "%", 'font': {'size': 34, 'color': "#0F172A"}},
+                    title={'text': f"Taux global {annee_ref_calendrier}", 'font': {'size': 14, 'color': "#334155"}},
+                    gauge={
+                        'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#94A3B8"},
+                        'bar': {'color': "#1E3A8A", 'thickness': 0.8},
+                        'bgcolor': "white",
+                        'borderwidth': 0,
+                        'steps': [{'range': [0, 100], 'color': "#E2E8F0"}],
+                    },
+                ))
+                fig_gauge.update_layout(
+                    margin=dict(t=40, b=10, l=20, r=20), height=280,
+                    paper_bgcolor='rgba(0,0,0,0)',
+                )
+                st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
+
+            dl1, dl2 = st.columns(2)
+            with dl1:
+                pdf_cal = generer_calendrier_controle_pdf(df_cal, annee_ref_calendrier)
+                st.download_button(
+                    "📥 Télécharger en PDF", data=pdf_cal,
+                    file_name=f"Calendrier_Controle_{annee_ref_calendrier}_{datetime.date.today().strftime('%d_%m_%Y')}.pdf",
+                    mime="application/pdf", use_container_width=True, key="dl_calendrier_pdf",
+                )
+            with dl2:
+                excel_cal = generer_calendrier_controle_excel(df_cal, annee_ref_calendrier)
+                st.download_button(
+                    "📥 Télécharger en Excel", data=excel_cal,
+                    file_name=f"Calendrier_Controle_{annee_ref_calendrier}_{datetime.date.today().strftime('%d_%m_%Y')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True, key="dl_calendrier_excel",
+                )
 
     # ===== SECTION 1 : CONTRAT D'ABONNEMENT =====
         st.markdown("### 📄 Contrat d'abonnement 2026")
