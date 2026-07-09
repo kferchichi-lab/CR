@@ -304,10 +304,13 @@ def generer_calendrier_controle_pdf(df_calendrier: pd.DataFrame, annee_reference
         df_site = df_calendrier[df_calendrier["Site"] == site].reset_index(drop=True)
         for i, row in df_site.iterrows():
             pct_val = row[col_realisation]
-            if pct_val == "A planifier":
+            if pct_val == "A planifier" or pd.isna(pct_val):
                 couleur = "#94A3B8"
             else:
-                pct_num = int(str(pct_val).replace("%", "") or 0)
+                try:
+                    pct_num = int(round(float(str(pct_val).replace("%", "").strip() or 0)))
+                except (ValueError, TypeError):
+                    pct_num = 0
                 couleur = "#16A34A" if pct_num >= 80 else "#F97316" if pct_num >= 50 else "#EF4444"
 
             lignes_html += "<tr>"
@@ -345,33 +348,33 @@ def generer_calendrier_controle_pdf(df_calendrier: pd.DataFrame, annee_reference
 
     html_content = f"""
     <html><head><style>
-        @page {{ size: A4 landscape; margin: 15mm 12mm; }}
-        body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color:#1E293B; font-size:9.5pt; }}
-        .header {{ display:flex; align-items:center; gap:12px; margin-bottom:14px; border-bottom:2px solid #1E3A8A; padding-bottom:10px; }}
-        .header img {{ height:34px; }}
-        .header-title {{ font-size:16pt; font-weight:800; color:#1E3A8A; text-transform:uppercase; }}
-        .subtitle {{ font-size:9.5pt; color:#64748B; margin:0 0 14px 0; }}
+        @page {{ size: A4 landscape; margin: 10mm 12mm; }}
+        * {{ box-sizing: border-box; }}
+        body {{ font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color:#1E293B; font-size:8.3pt; }}
+        .header {{ display:flex; align-items:center; gap:12px; margin-bottom:8px; border-bottom:2px solid #1E3A8A; padding-bottom:6px; }}
+        .header img {{ height:28px; }}
+        .header-title {{ font-size:14pt; font-weight:800; color:#1E3A8A; text-transform:uppercase; }}
+        .subtitle {{ font-size:8.5pt; color:#64748B; margin:0 0 8px 0; }}
         table {{ width:100%; border-collapse:collapse; }}
-        th, td {{ border:1px solid #CBD5E1; padding:7px 8px; text-align:left; }}
-        th {{ background:#1E3A8A; color:white; font-size:9pt; text-transform:uppercase; }}
+        th, td {{ border:1px solid #CBD5E1; padding:4px 6px; text-align:left; }}
+        th {{ background:#1E3A8A; color:white; font-size:8pt; text-transform:uppercase; }}
         .site-cell {{ font-weight:800; text-align:center; background:#F1F5F9; color:#1E3A8A; }}
         .ci-cell {{ font-weight:700; text-align:center; }}
         .center {{ text-align:center; }}
         .planifiee {{ font-weight:700; }}
         tr:nth-child(even) td:not(.site-cell) {{ background:#F8FAFC; }}
 
-        .charts-page {{ page-break-before: always; }}
-        .charts-title {{ font-size:14pt; font-weight:800; color:#1E3A8A; margin-bottom:18px; text-align:center; }}
-        .charts-wrap {{ display:flex; gap:30px; align-items:center; }}
-        .charts-left {{ flex:1.4; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:24px; }}
-        .charts-left-title {{ font-size:11pt; font-weight:700; color:#0F172A; margin-bottom:20px; text-align:center; }}
-        .bar-row {{ display:flex; align-items:center; margin-bottom:22px; }}
-        .bar-label {{ width:60px; font-weight:700; color:#0F172A; }}
-        .bar-track {{ flex:1; height:26px; background:#E2E8F0; border-radius:6px; overflow:hidden; }}
-        .bar-fill {{ height:100%; border-radius:6px; }}
-        .bar-value {{ width:55px; text-align:right; font-weight:800; color:#0F172A; }}
-        .charts-right {{ flex:1; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:24px; text-align:center; }}
-        .charts-right-title {{ font-size:11pt; font-weight:700; color:#0F172A; margin-bottom:16px; }}
+        .charts-title {{ font-size:11pt; font-weight:800; color:#1E3A8A; margin:10px 0 8px 0; text-align:center; }}
+        .charts-wrap {{ display:flex; gap:16px; align-items:stretch; }}
+        .charts-left {{ flex:1.5; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:12px 16px; }}
+        .charts-left-title {{ font-size:9.5pt; font-weight:700; color:#0F172A; margin-bottom:10px; text-align:center; }}
+        .bar-row {{ display:flex; align-items:center; margin-bottom:12px; }}
+        .bar-label {{ width:55px; font-weight:700; color:#0F172A; }}
+        .bar-track {{ flex:1; height:18px; background:#E2E8F0; border-radius:5px; overflow:hidden; }}
+        .bar-fill {{ height:100%; border-radius:5px; }}
+        .bar-value {{ width:50px; text-align:right; font-weight:800; color:#0F172A; }}
+        .charts-right {{ flex:1; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:8px 16px; text-align:center; }}
+        .charts-right-title {{ font-size:9.5pt; font-weight:700; color:#0F172A; margin-bottom:4px; }}
     </style></head>
     <body>
         <div class="header">
@@ -387,24 +390,22 @@ def generer_calendrier_controle_pdf(df_calendrier: pd.DataFrame, annee_reference
             <tbody>{lignes_html}</tbody>
         </table>
 
-        <div class="charts-page">
-            <div class="charts-title">Taux de réalisation des contrôles — {annee_reference}</div>
-            <div class="charts-wrap">
-                <div class="charts-left">
-                    <div class="charts-left-title">Taux de réalisation par site</div>
-                    {barres_html}
-                </div>
-                <div class="charts-right">
-                    <div class="charts-right-title">Taux global {annee_reference}</div>
-                    <svg width="200" height="200" viewBox="0 0 180 180">
-                        <circle cx="90" cy="90" r="{r_anneau}" fill="none" stroke="#E2E8F0" stroke-width="16"/>
-                        <circle cx="90" cy="90" r="{r_anneau}" fill="none" stroke="#1E3A8A" stroke-width="16"
-                                stroke-linecap="round"
-                                stroke-dasharray="{dash_val:.1f} {circonf:.1f}"
-                                transform="rotate(-90 90 90)"/>
-                        <text x="90" y="98" text-anchor="middle" font-size="30" font-weight="800" fill="#0F172A">{taux_global}%</text>
-                    </svg>
-                </div>
+        <div class="charts-title">Taux de réalisation des contrôles — {annee_reference}</div>
+        <div class="charts-wrap">
+            <div class="charts-left">
+                <div class="charts-left-title">Taux de réalisation par site</div>
+                {barres_html}
+            </div>
+            <div class="charts-right">
+                <div class="charts-right-title">Taux global {annee_reference}</div>
+                <svg width="150" height="150" viewBox="0 0 180 180">
+                    <circle cx="90" cy="90" r="{r_anneau}" fill="none" stroke="#E2E8F0" stroke-width="16"/>
+                    <circle cx="90" cy="90" r="{r_anneau}" fill="none" stroke="#1E3A8A" stroke-width="16"
+                            stroke-linecap="round"
+                            stroke-dasharray="{dash_val:.1f} {circonf:.1f}"
+                            transform="rotate(-90 90 90)"/>
+                    <text x="90" y="104" text-anchor="middle" font-size="46" font-weight="800" fill="#0F172A">{taux_global}%</text>
+                </svg>
             </div>
         </div>
     </body></html>
@@ -2468,7 +2469,7 @@ if acces_autorise:
                 fig_gauge = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=taux_global,
-                    number={'suffix': "%", 'font': {'size': 34, 'color': "#0F172A"}},
+                    number={'suffix': "%", 'font': {'size': 50, 'color': "#0F172A"}},
                     title={'text': f"Taux global {annee_ref_calendrier}", 'font': {'size': 14, 'color': "#334155"}},
                     gauge={
                         'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#94A3B8"},
