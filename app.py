@@ -264,7 +264,7 @@ def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: i
                 col_realisation: realisation_txt,
                 "Dates planifiées": (" | ".join(pd.Timestamp(d).strftime("%d/%m/%Y") for d in dates_planifiees)
                                       if len(dates_planifiees) else "-"),
-                "_nb_realisees_capped": min(nb_realisees_annee, attendu),  # colonne technique (masquée à l'affichage/export)
+                "Nbr visites réalisées": min(nb_realisees_annee, attendu),  # colonne technique (masquée à l'affichage/export)
             })
 
     return pd.DataFrame(lignes)
