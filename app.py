@@ -243,7 +243,7 @@ def construire_calendrier_controle(df_rapports: pd.DataFrame, annee_reference: i
             # Réalisées PENDANT l'année de référence -> détermine le % / statut
             nb_realisees_annee = df_grp[df_grp["_date"].dt.year == annee_reference]["_date"].nunique()
             pct = round(min(nb_realisees_annee, attendu) / attendu * 100) if attendu else 0
-            realisation_txt = f"{pct}%" if nb_realisees_annee > 0 else "À planifier"
+            realisation_txt = f"{pct}%" if nb_realisees_annee > 0 else "A planifier"
 
             # Dates planifiées : valeur manuelle (colonne "prochaine") si dispo,
             # sinon +périodicité de l'installation (6 mois pour l'électrique, 12 mois pour les autres)
@@ -304,7 +304,7 @@ def generer_calendrier_controle_pdf(df_calendrier: pd.DataFrame, annee_reference
         df_site = df_calendrier[df_calendrier["Site"] == site].reset_index(drop=True)
         for i, row in df_site.iterrows():
             pct_val = row[col_realisation]
-            if pct_val == "À planifier":
+            if pct_val == "A planifier":
                 couleur = "#94A3B8"
             else:
                 pct_num = int(str(pct_val).replace("%", "") or 0)
