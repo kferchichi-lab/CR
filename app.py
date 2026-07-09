@@ -2414,11 +2414,7 @@ if acces_autorise:
                             st.markdown(carte_html, unsafe_allow_html=True)
                 elif evenements and jour_sel is None:
                     st.info("💡 Cliquez sur un jour coloré du calendrier pour voir les détails du contrôle.")
-    # ---- ONGLET EXIGENCES ----
-    with tab_exigences:
-        st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;margin-bottom:15px;'>📌 Exigences réglementaires</p>", unsafe_allow_html=True)
 
-        df_exig = lire_exigences()
 
 # ------------------------------------------------------------------------------
 # BLOC 3 — UI Streamlit (à insérer dans `with tab_exigences:`)
@@ -2504,6 +2500,14 @@ if acces_autorise:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True, key="dl_calendrier_excel",
                 )
+
+
+    # ---- ONGLET EXIGENCES ----
+    with tab_exigences:
+        st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;margin-bottom:15px;'>📌 Exigences réglementaires</p>", unsafe_allow_html=True)
+
+        df_exig = lire_exigences()
+
 
     # ===== SECTION 1 : CONTRAT D'ABONNEMENT =====
         st.markdown("### 📄 Contrat d'abonnement 2026")
