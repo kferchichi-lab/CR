@@ -3917,7 +3917,7 @@ if acces_autorise:
                                     else:
                                         st.error("Erreur lors de l'enregistrement dans Google Sheets (vérifiez l'onglet « ActionsRealisees »).")
                             else:
-                                st.caption("ℹ️ Vue administrateur en lecture seule — seul le responsable connecté peut cocher ses actions.")
+                                st.caption("ℹ️ Vue administrateur en lecture seule.")
 
                         with st.expander(f"🗂️ Historique des actions réalisées ({len(df_hist_pilote)})"):
                             if df_hist_pilote.empty:
