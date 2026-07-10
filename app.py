@@ -3818,13 +3818,16 @@ if acces_autorise:
     if tab_suivi:
         with tab_suivi:
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>✅ Suivi des actions</p>",unsafe_allow_html=True)
-            st.markdown(
-                "<div style='background:#EFF6FF;border-left:4px solid #2a78d6;padding:10px 14px;border-radius:6px;margin-bottom:14px;'>"
-                "<p style='margin:0;font-size:12px;color:#1e40af;'>Cochez les actions terminées : elles seront retirées de vos "
-                "rapports tout en restant consultables ici, dans l'historique.</p>"
-                "</div>", unsafe_allow_html=True)
 
             est_admin_suivi = (role == "Admin" and password_correct)
+
+            if not est_admin_suivi:
+                st.markdown(
+                    "<div style='background:#EFF6FF;border-left:4px solid #2a78d6;padding:10px 14px;border-radius:6px;margin-bottom:14px;'>"
+                    "<p style='margin:0;font-size:12px;color:#1e40af;'>Cochez les actions terminées : elles seront retirées de vos "
+                    "rapports tout en restant consultables ici, dans l'historique.</p>"
+                    "</div>", unsafe_allow_html=True)
+
             if est_admin_suivi:
                 entites_disponibles_suivi = sorted(set(
                     e.strip() for v in NATURE_PILOTE.values() for e in v[1].split("+") if e.strip()
@@ -3917,7 +3920,7 @@ if acces_autorise:
                                     else:
                                         st.error("Erreur lors de l'enregistrement dans Google Sheets (vérifiez l'onglet « ActionsRealisees »).")
                             else:
-                                st.caption("ℹ️ Vue administrateur en lecture seule.")
+                                st.caption("ℹ️ Vue administrateur en lecture seule — seul le responsable connecté peut cocher ses actions.")
 
                         with st.expander(f"🗂️ Historique des actions réalisées ({len(df_hist_pilote)})"):
                             if df_hist_pilote.empty:
