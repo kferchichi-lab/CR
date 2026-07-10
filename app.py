@@ -3824,8 +3824,7 @@ if acces_autorise:
             if not est_admin_suivi:
                 st.markdown(
                     "<div style='background:#EFF6FF;border-left:4px solid #2a78d6;padding:10px 14px;border-radius:6px;margin-bottom:14px;'>"
-                    "<p style='margin:0;font-size:12px;color:#1e40af;'>Cochez les actions terminées : elles seront retirées de vos "
-                    "rapports tout en restant consultables ici, dans l'historique.</p>"
+                    "<p style='margin:0;font-size:12px;color:#1e40af;'>Cochez les actions terminées.</p>"
                     "</div>", unsafe_allow_html=True)
 
             if est_admin_suivi:
