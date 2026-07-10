@@ -1195,8 +1195,14 @@ tab3 = None
 TZ       = pytz.timezone('Africa/Tunis')
 SHEET_ID = "1ZK6VWg_gcCO70nt6DTyYogDeNeQUgovFmwWQufMVO-M"
 URL_GOOGLE_SHEET = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit?gid=0#gid=0"
-# Classeur externe "Classification des actions CR 2026" : un onglet par installation,
-# colonnes Désignation | Observation | Code (T/S/E/D/O/R). Utilisé pour le rapport PDF par pilote.
+# Classeurs externes "Classification des actions CR 2026" : un classeur par site, un onglet par
+# installation à l'intérieur, colonnes Désignation | Observation | Code (T/S/E/D/O/R).
+# Utilisés pour le rapport PDF par pilote ainsi que pour le suivi des actions.
+CODIF_SHEET_ID_PAR_SITE = {
+    "MEG": "1AF65P1sQPKM6JN7_r2mck-UrrZqz7tn5QmpnJD1iICA",
+    "SGB": "1bD6LUxs_nGgamVsC9DAmGffScUo5wgMhxjvPBuBxzx0",
+}
+# Conservé par compatibilité (ancien classeur unique) — non utilisé si les IDs par site ci-dessus sont renseignés.
 CODIF_SHEET_ID = "119hyynlCiIUzf-17iiSkcPnaEr2oCiFC"
 SEUIL_EN_LIGNE_SECONDES = 90
 calendar.setfirstweekday(0)
@@ -1594,6 +1600,55 @@ def _codes_pour_pilote(pilote_choisi):
         if pilote_choisi in entites:
             codes.append(code)
     return codes
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def codif_charger_toutes_actions():
+    """Charge et combine les classeurs de codification des deux sites (MEG et SGB).
+    Retourne (DataFrame combiné [Site, Installation, Designation, Observation, Code], message_erreur_ou_None)."""
+    frames, erreurs = [], []
+    for site, sheet_id in CODIF_SHEET_ID_PAR_SITE.items():
+        classeur, err = codif_charger_classeur(sheet_id)
+        if err:
+            erreurs.append(f"{site} : {err}")
+            continue
+        if not classeur:
+            continue
+        for onglet, df_brut in classeur.items():
+            valeurs = df_brut.fillna("").astype(str).values.tolist()
+            d = _detecter_entete_et_nettoyer_codif(valeurs)
+            if not d.empty:
+                d["Installation"] = onglet
+                d["Site"] = site
+                frames.append(d)
+    if not frames:
+        return pd.DataFrame(), (" / ".join(erreurs) if erreurs else "Aucune donnée trouvée dans les classeurs de codification.")
+    return pd.concat(frames, ignore_index=True), (" / ".join(erreurs) if erreurs else None)
+
+
+def _cle_action(row):
+    """Clé unique identifiant une action précise, utilisée pour repérer les actions déjà réalisées."""
+    return "||".join(str(row.get(c, "")).strip().upper() for c in
+                      ["Site", "Installation", "Designation", "Observation", "Code"])
+
+
+def lire_actions_realisees():
+    """Lit l'onglet ActionsRealisees : Site | Installation | Designation | Observation | Code | Pilote | Responsable | DateRealisation."""
+    return sheets_lire("ActionsRealisees", "A:H")
+
+
+def marquer_actions_realisees(df_lignes, responsable_nom):
+    """Enregistre chaque action cochée comme réalisée (une ligne par action) dans l'onglet ActionsRealisees."""
+    date_str = datetime.datetime.now(TZ).strftime("%d/%m/%Y %H:%M")
+    ok_total = True
+    for _, row in df_lignes.iterrows():
+        ok, _msg = sheets_append("ActionsRealisees", [
+            row.get("Site", ""), row.get("Installation", ""), row.get("Designation", ""),
+            row.get("Observation", ""), row.get("Code", ""), row.get("Pilote", ""),
+            responsable_nom, date_str
+        ])
+        ok_total = ok_total and ok
+    return ok_total
 
 
 def _lignes_avec_rowspan(d_ins):
@@ -2011,18 +2066,25 @@ if acces_autorise:
 
     st.markdown("<br>",unsafe_allow_html=True)
 
+    afficher_suivi_actions = (role == "Admin" and password_correct) or (role == "Responsable" and st.session_state.responsable_connecte)
+
     liste_onglets = ["📋 Rapports CR","📅 Planification","📌 Exigences"]
     if role == "Admin" and password_correct:
         liste_onglets.append("👥 Statistiques")
     liste_onglets.append("📊 KPI")
+    if afficher_suivi_actions:
+        liste_onglets.append("✅ Suivi des actions")
     onglets = st.tabs(liste_onglets)
     tab1, tab2, tab_exigences = onglets[0], onglets[1], onglets[2]
     tab3 = None
     tab_kpi = None
+    tab_suivi = None
     _idx = 3
     if role == "Admin" and password_correct:
         tab3 = onglets[_idx]; _idx += 1
-    tab_kpi = onglets[_idx]
+    tab_kpi = onglets[_idx]; _idx += 1
+    if afficher_suivi_actions:
+        tab_suivi = onglets[_idx]; _idx += 1
 
     def convertir_lien(url):
         try:
@@ -3335,16 +3397,6 @@ if acces_autorise:
             st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
             st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#0F172A;'>📄 Rapport des actions par Pilote</p>",unsafe_allow_html=True)
 
-            def _deduire_site_installation(nom_installation):
-                """Déduit le site (SGB/MEG) à partir du nom de l'onglet/installation, si celui-ci
-                le mentionne explicitement (ex: 'SGB - Installations électriques')."""
-                n = str(nom_installation).upper()
-                if "SGB" in n:
-                    return "SGB"
-                if "MEG" in n:
-                    return "MEG"
-                return None
-
             entites_pilote_codif = sorted(set(
                 e.strip() for v in NATURE_PILOTE.values() for e in v[1].split("+") if e.strip()
             ))
@@ -3357,49 +3409,40 @@ if acces_autorise:
                 charger_classeur_pilote = st.button("🔍 Charger les installations",use_container_width=True,key="btn_charger_classeur_pilote")
 
             if charger_classeur_pilote:
-                with st.spinner("Lecture du classeur de codification..."):
-                    classeur, err = codif_charger_classeur(CODIF_SHEET_ID)
-                    if err:
+                with st.spinner("Lecture des classeurs de codification (MEG et SGB)..."):
+                    df_codif_brut, err = codif_charger_toutes_actions()
+                    if err and df_codif_brut.empty:
                         st.session_state["classeur_codif_pilote"] = None
                         st.error(err)
-                    elif not classeur:
-                        st.session_state["classeur_codif_pilote"] = None
-                        st.warning("Aucun onglet trouvé dans le classeur de codification.")
                     else:
-                        st.session_state["classeur_codif_pilote"] = classeur
+                        if err:
+                            st.warning(err)
+                        st.session_state["classeur_codif_pilote"] = df_codif_brut
                         st.session_state["pdf_pilote"] = None
 
             classeur_pilote = st.session_state.get("classeur_codif_pilote")
 
-            if not classeur_pilote:
+            if classeur_pilote is None or (hasattr(classeur_pilote,"empty") and classeur_pilote.empty):
                 st.info("👆 Cliquez sur « Charger les installations » pour sélectionner précisément "
                          "le site et l'installation à inclure dans le rapport.")
             else:
-                frames = []
-                for onglet, df_brut in classeur_pilote.items():
-                    valeurs = df_brut.fillna("").astype(str).values.tolist()
-                    d = _detecter_entete_et_nettoyer_codif(valeurs)
-                    if not d.empty:
-                        d["Installation"] = onglet
-                        frames.append(d)
+                df_codif = classeur_pilote.copy()
+                # Exclut les actions déjà cochées comme réalisées par un responsable
+                df_realisees_pilote = lire_actions_realisees()
+                if not df_realisees_pilote.empty:
+                    cles_faites = set(df_realisees_pilote.apply(_cle_action, axis=1))
+                    df_codif = df_codif[~df_codif.apply(_cle_action, axis=1).isin(cles_faites)]
 
-                if not frames:
-                    st.warning("Aucune donnée exploitable trouvée dans les onglets du classeur "
-                               "(colonnes Désignation/Observation/Code introuvables).")
+                df_codif["Nature"] = df_codif["Code"].map(lambda c: NATURE_PILOTE.get(c,("",""))[0])
+                codes_ok = _codes_pour_pilote(pilote_codif_choisi)
+                df_pilote_codif = df_codif[df_codif["Code"].isin(codes_ok)]
+
+                if df_pilote_codif.empty:
+                    st.info(f"Aucune action restante pour le pilote « {pilote_codif_choisi} » "
+                            f"(codes recherchés : {', '.join(codes_ok) if codes_ok else '—'}).")
                 else:
-                    df_codif = pd.concat(frames,ignore_index=True)
-                    df_codif["Nature"] = df_codif["Code"].map(lambda c: NATURE_PILOTE.get(c,("",""))[0])
-                    codes_ok = _codes_pour_pilote(pilote_codif_choisi)
-                    df_pilote_codif = df_codif[df_codif["Code"].isin(codes_ok)]
-
-                    if df_pilote_codif.empty:
-                        st.info(f"Aucune action trouvée pour le pilote « {pilote_codif_choisi} » "
-                                f"(codes recherchés : {', '.join(codes_ok) if codes_ok else '—'}).")
-                    else:
                         installations_dispo = sorted(df_pilote_codif["Installation"].unique().tolist())
-                        sites_dispo = sorted({
-                            s for s in (_deduire_site_installation(i) for i in installations_dispo) if s
-                        })
+                        sites_dispo = sorted(df_pilote_codif["Site"].dropna().unique().tolist())
 
                         cfil1,cfil2 = st.columns(2)
                         with cfil1:
@@ -3411,7 +3454,8 @@ if acces_autorise:
                                 site_filtre_pilote = "Tous"
                         installations_apres_site = [
                             i for i in installations_dispo
-                            if site_filtre_pilote == "Tous" or _deduire_site_installation(i) == site_filtre_pilote
+                            if site_filtre_pilote == "Tous" or i in
+                               df_pilote_codif[df_pilote_codif["Site"]==site_filtre_pilote]["Installation"].unique()
                         ]
                         with cfil2:
                             installation_filtre_pilote = st.selectbox(
@@ -3423,6 +3467,7 @@ if acces_autorise:
                             df_filtre_codif = df_pilote_codif[df_pilote_codif["Installation"].isin(installations_apres_site)]
                         else:
                             df_filtre_codif = df_pilote_codif[df_pilote_codif["Installation"] == installation_filtre_pilote]
+
 
                         lancer_rapport_pilote = st.button(
                             "👁️ Générer",use_container_width=True,key="btn_gen_rapport_pilote",type="primary"
@@ -3601,43 +3646,36 @@ if acces_autorise:
                 
 
             if st.button("Générer mon rapport", use_container_width=True, key="btn_gen_rapport_responsable", type="primary") and entite_pdf_choisie:
-                with st.spinner("Lecture du classeur de codification..."):
-                    classeur, err = codif_charger_classeur(CODIF_SHEET_ID)
-                    if err:
+                with st.spinner("Lecture des classeurs de codification (MEG et SGB)..."):
+                    df_codif_r, err = codif_charger_toutes_actions()
+                    if err and df_codif_r.empty:
                         st.session_state["pdf_responsable"] = None
                         st.error(err)
-                    elif not classeur:
-                        st.session_state["pdf_responsable"] = None
-                        st.warning("Aucun onglet trouvé dans le classeur de codification.")
                     else:
-                        frames_r = []
-                        for onglet_r, df_brut_r in classeur.items():
-                            valeurs_r = df_brut_r.fillna("").astype(str).values.tolist()
-                            d_r = _detecter_entete_et_nettoyer_codif(valeurs_r)
-                            if not d_r.empty:
-                                d_r["Installation"] = onglet_r
-                                frames_r.append(d_r)
-                        if not frames_r:
+                        if err:
+                            st.warning(err)
+                        # Exclut les actions déjà cochées comme réalisées (onglet « Suivi des actions »)
+                        df_realisees_r = lire_actions_realisees()
+                        if not df_realisees_r.empty:
+                            cles_faites_r = set(df_realisees_r.apply(_cle_action, axis=1))
+                            df_codif_r = df_codif_r[~df_codif_r.apply(_cle_action, axis=1).isin(cles_faites_r)]
+
+                        df_codif_r["Nature"] = df_codif_r["Code"].map(lambda c: NATURE_PILOTE.get(c,("",""))[0])
+                        codes_ok_r = _codes_pour_pilote(entite_pdf_choisie)
+                        df_filtre_codif_r = df_codif_r[df_codif_r["Code"].isin(codes_ok_r)]
+                        if df_filtre_codif_r.empty:
                             st.session_state["pdf_responsable"] = None
-                            st.warning("Aucune donnée exploitable trouvée dans les onglets du classeur.")
+                            st.info(f"Aucune action restante pour « {entite_pdf_choisie} ».")
                         else:
-                            df_codif_r = pd.concat(frames_r,ignore_index=True)
-                            df_codif_r["Nature"] = df_codif_r["Code"].map(lambda c: NATURE_PILOTE.get(c,("",""))[0])
-                            codes_ok_r = _codes_pour_pilote(entite_pdf_choisie)
-                            df_filtre_codif_r = df_codif_r[df_codif_r["Code"].isin(codes_ok_r)]
-                            if df_filtre_codif_r.empty:
+                            try:
+                                st.session_state["pdf_responsable"] = generer_rapport_pilote_pdf(
+                                    entite_pdf_choisie, df_filtre_codif_r,
+                                    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s"
+                                )
+                                st.session_state["nb_actions_responsable"] = len(df_filtre_codif_r)
+                            except Exception as e:
                                 st.session_state["pdf_responsable"] = None
-                                st.info(f"Aucune action trouvée pour « {entite_pdf_choisie} ».")
-                            else:
-                                try:
-                                    st.session_state["pdf_responsable"] = generer_rapport_pilote_pdf(
-                                        entite_pdf_choisie, df_filtre_codif_r,
-                                        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6q1BtDSDgVnJZFo0hOBfQJoDS6OYiub-qfQ&s"
-                                    )
-                                    st.session_state["nb_actions_responsable"] = len(df_filtre_codif_r)
-                                except Exception as e:
-                                    st.session_state["pdf_responsable"] = None
-                                    st.error(f"Erreur lors de la génération du PDF : {e}")
+                                st.error(f"Erreur lors de la génération du PDF : {e}")
 
             if st.session_state.get("pdf_responsable"):
                 st.success(f"{st.session_state.get('nb_actions_responsable',0)} action(s) trouvée(s) pour « {entite_pdf_choisie} ».")
@@ -3728,3 +3766,134 @@ if acces_autorise:
                             st.plotly_chart(figv2,use_container_width=True,config={'displayModeBar':False})
                 else:
                     st.info("Aucune donnée à afficher pour les graphes.")
+
+    # ---- ONGLET 5 : SUIVI DES ACTIONS (cocher les actions terminées, historique persistant) ----
+    if tab_suivi:
+        with tab_suivi:
+            st.markdown("<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>✅ Suivi des actions</p>",unsafe_allow_html=True)
+            st.markdown(
+                "<div style='background:#EFF6FF;border-left:4px solid #2a78d6;padding:10px 14px;border-radius:6px;margin-bottom:14px;'>"
+                "<p style='margin:0;font-size:12px;color:#1e40af;'>Cochez les actions terminées : elles seront retirées de vos "
+                "rapports tout en restant consultables ici, dans l'historique.</p>"
+                "</div>", unsafe_allow_html=True)
+
+            est_admin_suivi = (role == "Admin" and password_correct)
+            if est_admin_suivi:
+                entites_disponibles_suivi = sorted(set(
+                    e.strip() for v in NATURE_PILOTE.values() for e in v[1].split("+") if e.strip()
+                ))
+                pilote_suivi_choisi = st.selectbox("Responsable à suivre", entites_disponibles_suivi, key="pilote_suivi_admin")
+                nom_responsable_suivi = SOUS_PILOTE_NOMS.get(pilote_suivi_choisi, pilote_suivi_choisi)
+            else:
+                compte_resp_suivi = RESPONSABLES.get(st.session_state.responsable_actif, {})
+                entites_resp_suivi = compte_resp_suivi.get("entites", [])
+                nom_responsable_suivi = compte_resp_suivi.get("nom", st.session_state.responsable_actif)
+                if len(entites_resp_suivi) > 1:
+                    pilote_suivi_choisi = st.selectbox("Périmètre", entites_resp_suivi, key="pilote_suivi_resp")
+                else:
+                    pilote_suivi_choisi = entites_resp_suivi[0] if entites_resp_suivi else None
+
+            if not pilote_suivi_choisi:
+                st.info("Aucun périmètre associé à ce profil.")
+            else:
+                with st.spinner("Chargement des actions (MEG et SGB)..."):
+                    df_codif_suivi, err_suivi = codif_charger_toutes_actions()
+                    df_realisees_suivi = lire_actions_realisees()
+
+                if err_suivi and df_codif_suivi.empty:
+                    st.error(err_suivi)
+                else:
+                    if err_suivi:
+                        st.warning(err_suivi)
+
+                    codes_ok_suivi = _codes_pour_pilote(pilote_suivi_choisi)
+                    df_pilote_suivi = df_codif_suivi[df_codif_suivi["Code"].isin(codes_ok_suivi)].copy()
+                    df_pilote_suivi["Cle"] = df_pilote_suivi.apply(_cle_action, axis=1)
+
+                    cles_faites_suivi = set()
+                    df_hist_pilote = pd.DataFrame()
+                    if not df_realisees_suivi.empty and "Pilote" in df_realisees_suivi.columns:
+                        df_hist_pilote = df_realisees_suivi[df_realisees_suivi["Pilote"] == pilote_suivi_choisi]
+                        cles_faites_suivi = set(df_hist_pilote.apply(_cle_action, axis=1))
+
+                    df_restantes = df_pilote_suivi[~df_pilote_suivi["Cle"].isin(cles_faites_suivi)]
+
+                    total_pilote = len(df_pilote_suivi)
+                    nb_realisees = len(cles_faites_suivi & set(df_pilote_suivi["Cle"]))
+                    taux = round((nb_realisees/total_pilote*100), 1) if total_pilote else 0.0
+
+                    col_liste, col_graphe = st.columns([3, 1])
+
+                    with col_liste:
+                        st.markdown(f"<p style='font-weight:700;font-size:14px;color:#0F172A;'>Actions restantes — {nom_responsable_suivi}</p>",unsafe_allow_html=True)
+
+                        if df_restantes.empty:
+                            st.success("🎉 Toutes les actions de ce périmètre sont réalisées !")
+                        else:
+                            sites_dispo_suivi = sorted(df_restantes["Site"].dropna().unique().tolist())
+                            fcol1, fcol2 = st.columns(2)
+                            with fcol1:
+                                site_f_suivi = st.selectbox("Site", ["Tous"]+sites_dispo_suivi, key="site_filtre_suivi")
+                            df_apres_site_suivi = df_restantes if site_f_suivi == "Tous" else df_restantes[df_restantes["Site"] == site_f_suivi]
+                            with fcol2:
+                                installations_dispo_suivi = sorted(df_apres_site_suivi["Installation"].dropna().unique().tolist())
+                                install_f_suivi = st.selectbox("Installation", ["Toutes"]+installations_dispo_suivi, key="installation_filtre_suivi")
+                            df_affiche_suivi = df_apres_site_suivi if install_f_suivi == "Toutes" else df_apres_site_suivi[df_apres_site_suivi["Installation"] == install_f_suivi]
+
+                            df_edit = df_affiche_suivi[["Site", "Installation", "Designation", "Observation", "Code"]].copy()
+                            df_edit.insert(0, "Terminé", False)
+
+                            df_edit_out = st.data_editor(
+                                df_edit,
+                                hide_index=True,
+                                use_container_width=True,
+                                disabled=["Site", "Installation", "Designation", "Observation", "Code"],
+                                column_config={"Terminé": st.column_config.CheckboxColumn("Terminé ?")},
+                                key="editeur_suivi_actions"
+                            )
+
+                            nb_coches = int(df_edit_out["Terminé"].sum()) if not df_edit_out.empty else 0
+                            if not est_admin_suivi:
+                                if st.button(f"✅ Valider {nb_coches} action(s) terminée(s)", type="primary",
+                                             use_container_width=True, disabled=(nb_coches == 0), key="btn_valider_suivi"):
+                                    lignes_a_marquer = df_affiche_suivi.loc[df_edit_out[df_edit_out["Terminé"]].index].copy()
+                                    lignes_a_marquer["Pilote"] = pilote_suivi_choisi
+                                    ok = marquer_actions_realisees(lignes_a_marquer, nom_responsable_suivi)
+                                    if ok:
+                                        st.success(f"{nb_coches} action(s) enregistrée(s) comme réalisée(s).")
+                                        st.cache_data.clear()
+                                        st.rerun()
+                                    else:
+                                        st.error("Erreur lors de l'enregistrement dans Google Sheets (vérifiez l'onglet « ActionsRealisees »).")
+                            else:
+                                st.caption("ℹ️ Vue administrateur en lecture seule — seul le responsable connecté peut cocher ses actions.")
+
+                        with st.expander(f"🗂️ Historique des actions réalisées ({len(df_hist_pilote)})"):
+                            if df_hist_pilote.empty:
+                                st.info("Aucune action réalisée pour le moment.")
+                            else:
+                                cols_hist = [c for c in ["DateRealisation", "Site", "Installation", "Designation", "Observation", "Code", "Responsable"] if c in df_hist_pilote.columns]
+                                df_aff_hist = df_hist_pilote[cols_hist]
+                                if "DateRealisation" in df_aff_hist.columns:
+                                    df_aff_hist = df_aff_hist.sort_values("DateRealisation", ascending=False)
+                                st.dataframe(df_aff_hist, hide_index=True, use_container_width=True)
+
+                    with col_graphe:
+                        st.markdown("<p style='font-weight:700;font-size:13px;color:#0F172A;text-align:center;'>Taux de réalisation</p>",unsafe_allow_html=True)
+                        fig_gauge = go.Figure(go.Indicator(
+                            mode="gauge+number",
+                            value=taux,
+                            number={"suffix": "%"},
+                            gauge={
+                                "axis": {"range": [0, 100]},
+                                "bar": {"color": "#1baf7a"},
+                                "steps": [
+                                    {"range": [0, 50], "color": "#FEE2E2"},
+                                    {"range": [50, 80], "color": "#FEF3C7"},
+                                    {"range": [80, 100], "color": "#DCFCE7"},
+                                ],
+                            }
+                        ))
+                        fig_gauge.update_layout(height=220, margin=dict(t=20, b=10, l=20, r=20), paper_bgcolor='rgba(0,0,0,0)')
+                        st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
+                        st.markdown(f"<p style='text-align:center;font-size:12px;color:#64748B;'>{nb_realisees} / {total_pilote} action(s) réalisée(s)</p>",unsafe_allow_html=True)
