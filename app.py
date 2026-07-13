@@ -2107,10 +2107,10 @@ with st.sidebar:
 
     # ---- Comptes Responsable (identifiant + mot de passe) ----
     RESPONSABLES={
-        "SABER": {"password":"SABER123*","nom":"Saber BEN CHAABEN","entites":["Maintenance"]},
-        "HSE":   {"password":"HSE123*",  "nom":"Montassar MEHRABI","entites":["HSE"]},
-        "AICHA": {"password":"AICHA123*","nom":"Aïcha BELLAKHAL",  "entites":["BT","Chef service BT","RH","DG"]},
-        "CHAFIK": {"password":"chafik123*","nom":"Chafik ABID",    "entites":["Maintenance"]},
+        "SABER": {"password":"SABER123*","nom":"Saber BEN CHAABEN","entites":["Maintenance"],"site":"MEG"},
+        "HSE":   {"password":"HSE123*",  "nom":"Montassar MEHRABI","entites":["HSE"],"site":None},
+        "AICHA": {"password":"AICHA123*","nom":"Aïcha BELLAKHAL",  "entites":["BT","Chef service BT","RH","DG"],"site":None},
+        "CHAFIK": {"password":"chafik123*","nom":"Chafik ABID",    "entites":["Maintenance"],"site":"SGB"},
     }
     if "responsable_connecte" not in st.session_state: st.session_state.responsable_connecte=False
     if "responsable_actif" not in st.session_state: st.session_state.responsable_actif=None
@@ -3759,6 +3759,7 @@ if acces_autorise:
             compte_resp = RESPONSABLES.get(st.session_state.responsable_actif, {})
             nom_resp = compte_resp.get("nom", st.session_state.responsable_actif)
             entites_resp = compte_resp.get("entites", [])
+            site_resp = compte_resp.get("site")
 
             st.markdown(f"<p style='font-size:1.2rem;font-weight:700;color:#1E3A8A;'>📊 Indicateurs — {nom_resp}</p>",unsafe_allow_html=True)
             st.markdown(
@@ -3786,18 +3787,23 @@ if acces_autorise:
                 if df_nature_r.empty:
                     st.info("Aucune action trouvée pour votre périmètre.")
                 else:
-                    if "site_kpi_responsable" not in st.session_state:
-                        st.session_state.site_kpi_responsable = "SGB"
-
-                    rcol1,rcol2,_ = st.columns([1,1,4])
-                    with rcol1:
-                        if st.button("🏭 SGB", key="btn_kpi_sgb_resp", type=("primary" if st.session_state.site_kpi_responsable=="SGB" else "secondary"), use_container_width=True):
+                    if site_resp:
+                        # Compte restreint à un seul site (ex : Saber -> MEG, Chafik -> SGB)
+                        st.session_state.site_kpi_responsable = site_resp
+                        st.markdown(f"<p style='font-size:12px;color:#64748B;margin-bottom:6px;'>🏭 Site : <strong>{site_resp}</strong></p>",unsafe_allow_html=True)
+                    else:
+                        if "site_kpi_responsable" not in st.session_state:
                             st.session_state.site_kpi_responsable = "SGB"
-                            st.rerun()
-                    with rcol2:
-                        if st.button("🏭 MEG", key="btn_kpi_meg_resp", type=("primary" if st.session_state.site_kpi_responsable=="MEG" else "secondary"), use_container_width=True):
-                            st.session_state.site_kpi_responsable = "MEG"
-                            st.rerun()
+
+                        rcol1,rcol2,_ = st.columns([1,1,4])
+                        with rcol1:
+                            if st.button("🏭 SGB", key="btn_kpi_sgb_resp", type=("primary" if st.session_state.site_kpi_responsable=="SGB" else "secondary"), use_container_width=True):
+                                st.session_state.site_kpi_responsable = "SGB"
+                                st.rerun()
+                        with rcol2:
+                            if st.button("🏭 MEG", key="btn_kpi_meg_resp", type=("primary" if st.session_state.site_kpi_responsable=="MEG" else "secondary"), use_container_width=True):
+                                st.session_state.site_kpi_responsable = "MEG"
+                                st.rerun()
 
                     site_choisi_r = st.session_state.site_kpi_responsable
                     st.markdown(f"<p style='font-weight:700;font-size:14px;color:#0F172A;text-align:center;margin:14px 0 10px 0;'>Répartition des actions — Site {site_choisi_r}</p>",unsafe_allow_html=True)
@@ -3876,9 +3882,11 @@ if acces_autorise:
                         df_codif_r["Nature"] = df_codif_r["Code"].map(lambda c: NATURE_PILOTE.get(c,("",""))[0])
                         codes_ok_r = _codes_pour_pilote(entite_pdf_choisie)
                         df_filtre_codif_r = df_codif_r[df_codif_r["Code"].isin(codes_ok_r)]
+                        if site_resp and "Site" in df_filtre_codif_r.columns:
+                            df_filtre_codif_r = df_filtre_codif_r[df_filtre_codif_r["Site"].astype(str).str.strip().str.upper() == site_resp.upper()]
                         if df_filtre_codif_r.empty:
                             st.session_state["pdf_responsable"] = None
-                            st.info(f"Aucune action restante pour « {entite_pdf_choisie} ».")
+                            st.info(f"Aucune action restante pour « {entite_pdf_choisie} »" + (f" — site {site_resp}." if site_resp else "."))
                         else:
                             try:
                                 st.session_state["pdf_responsable"] = generer_rapport_pilote_pdf(
@@ -3999,10 +4007,12 @@ if acces_autorise:
                 ))
                 pilote_suivi_choisi = st.selectbox("Responsable à suivre", entites_disponibles_suivi, key="pilote_suivi_admin")
                 nom_responsable_suivi = SOUS_PILOTE_NOMS.get(pilote_suivi_choisi, pilote_suivi_choisi)
+                site_resp_suivi = None
             else:
                 compte_resp_suivi = RESPONSABLES.get(st.session_state.responsable_actif, {})
                 entites_resp_suivi = compte_resp_suivi.get("entites", [])
                 nom_responsable_suivi = compte_resp_suivi.get("nom", st.session_state.responsable_actif)
+                site_resp_suivi = compte_resp_suivi.get("site")
                 if len(entites_resp_suivi) > 1:
                     pilote_suivi_choisi = st.selectbox("Périmètre", entites_resp_suivi, key="pilote_suivi_resp")
                 else:
@@ -4023,6 +4033,8 @@ if acces_autorise:
 
                     codes_ok_suivi = _codes_pour_pilote(pilote_suivi_choisi)
                     df_pilote_suivi = df_codif_suivi[df_codif_suivi["Code"].isin(codes_ok_suivi)].copy()
+                    if site_resp_suivi and "Site" in df_pilote_suivi.columns:
+                        df_pilote_suivi = df_pilote_suivi[df_pilote_suivi["Site"].astype(str).str.strip().str.upper() == site_resp_suivi.upper()]
                     df_pilote_suivi["Cle"] = df_pilote_suivi.apply(_cle_action, axis=1)
 
                     cles_faites_suivi = set()
@@ -4045,14 +4057,20 @@ if acces_autorise:
                         if df_restantes.empty:
                             st.success("🎉 Toutes les actions de ce périmètre sont réalisées !")
                         else:
-                            sites_dispo_suivi = sorted(df_restantes["Site"].dropna().unique().tolist())
-                            fcol1, fcol2 = st.columns(2)
-                            with fcol1:
-                                site_f_suivi = st.selectbox("Site", ["Tous"]+sites_dispo_suivi, key="site_filtre_suivi")
-                            df_apres_site_suivi = df_restantes if site_f_suivi == "Tous" else df_restantes[df_restantes["Site"] == site_f_suivi]
-                            with fcol2:
+                            if site_resp_suivi:
+                                # Compte restreint à un seul site : pas de sélecteur de site
+                                df_apres_site_suivi = df_restantes
                                 installations_dispo_suivi = sorted(df_apres_site_suivi["Installation"].dropna().unique().tolist())
                                 install_f_suivi = st.selectbox("Installation", ["Toutes"]+installations_dispo_suivi, key="installation_filtre_suivi")
+                            else:
+                                sites_dispo_suivi = sorted(df_restantes["Site"].dropna().unique().tolist())
+                                fcol1, fcol2 = st.columns(2)
+                                with fcol1:
+                                    site_f_suivi = st.selectbox("Site", ["Tous"]+sites_dispo_suivi, key="site_filtre_suivi")
+                                df_apres_site_suivi = df_restantes if site_f_suivi == "Tous" else df_restantes[df_restantes["Site"] == site_f_suivi]
+                                with fcol2:
+                                    installations_dispo_suivi = sorted(df_apres_site_suivi["Installation"].dropna().unique().tolist())
+                                    install_f_suivi = st.selectbox("Installation", ["Toutes"]+installations_dispo_suivi, key="installation_filtre_suivi")
                             df_affiche_suivi = df_apres_site_suivi if install_f_suivi == "Toutes" else df_apres_site_suivi[df_apres_site_suivi["Installation"] == install_f_suivi]
 
                             df_edit = df_affiche_suivi[["Site", "Installation", "Désignation", "Observation", "Code"]].copy()
