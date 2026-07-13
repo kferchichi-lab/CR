@@ -1863,6 +1863,31 @@ def marquer_actions_realisees(df_lignes, responsable_nom):
     return ok_total
 
 
+def lire_suivi_encours():
+    """Lit l'onglet SuiviActions : Site | Installation | Designation | Observation | Code | Pilote |
+    Statut | Type | Commentaire | Responsable | DateMaJ.
+    Ne garde que la dernière saisie connue pour chaque action (une action peut être mise à jour
+    plusieurs fois : seule la ligne la plus récente fait foi)."""
+    df = sheets_lire("SuiviActions", "A:K")
+    if df.empty:
+        return df
+    df["Cle"] = df.apply(_cle_action, axis=1)
+    df = df.drop_duplicates(subset="Cle", keep="last").reset_index(drop=True)
+    return df
+
+
+def enregistrer_statut_en_cours(row, type_suivi, commentaire, responsable_nom):
+    """Enregistre (nouvelle ligne d'historique) le statut « En cours » d'une action, avec son type
+    de suivi (Immédiat / Sous-traitance / Planifié) et un commentaire libre facultatif."""
+    date_str = datetime.datetime.now(TZ).strftime("%d/%m/%Y %H:%M")
+    ok, _msg = sheets_append("SuiviActions", [
+        row.get("Site", ""), row.get("Installation", ""), row.get("Designation", ""),
+        row.get("Observation", ""), row.get("Code", ""), row.get("Pilote", ""),
+        "En cours", type_suivi, commentaire, responsable_nom, date_str
+    ])
+    return ok
+
+
 def _lignes_avec_rowspan(d_ins):
     """Regroupe les lignes consécutives ayant le même Equipement (Designation) pour permettre
     une fusion de cellules (rowspan) dans le tableau PDF.
@@ -4024,6 +4049,7 @@ if acces_autorise:
                 with st.spinner("Chargement des actions (MEG et SGB)..."):
                     df_codif_suivi, err_suivi = codif_charger_toutes_actions()
                     df_realisees_suivi = lire_actions_realisees()
+                    df_encours_suivi = lire_suivi_encours()
 
                 if err_suivi and df_codif_suivi.empty:
                     st.error(err_suivi)
@@ -4049,6 +4075,15 @@ if acces_autorise:
                     nb_realisees = len(cles_faites_suivi & set(df_pilote_suivi["Cle"]))
                     taux = round((nb_realisees/total_pilote*100), 1) if total_pilote else 0.0
 
+                    # Dernier statut « En cours » connu (Type + commentaire), par clé d'action
+                    info_encours_par_cle = {}
+                    if not df_encours_suivi.empty:
+                        for _, r_enc in df_encours_suivi.iterrows():
+                            info_encours_par_cle[r_enc["Cle"]] = {
+                                "Type": r_enc.get("Type", "") or "",
+                                "Commentaire": r_enc.get("Commentaire", "") or "",
+                            }
+
                     col_liste, col_graphe = st.columns([3, 1])
 
                     with col_liste:
@@ -4073,36 +4108,80 @@ if acces_autorise:
                                     install_f_suivi = st.selectbox("Installation", ["Toutes"]+installations_dispo_suivi, key="installation_filtre_suivi")
                             df_affiche_suivi = df_apres_site_suivi if install_f_suivi == "Toutes" else df_apres_site_suivi[df_apres_site_suivi["Installation"] == install_f_suivi]
 
-                            df_edit = df_affiche_suivi[["Site", "Installation", "Désignation", "Observation", "Code"]].copy()
-                            df_edit.insert(0, "Terminé", False)
-
-                            colonnes_verrouillees = ["Site", "Installation", "Désignation", "Observation", "Code"]
-                            if est_admin_suivi:
-                                colonnes_verrouillees.append("Terminé")
-
-                            df_edit_out = st.data_editor(
-                                df_edit,
-                                hide_index=True,
-                                use_container_width=True,
-                                disabled=colonnes_verrouillees,
-                                column_config={"Terminé": st.column_config.CheckboxColumn("Terminé ?")},
-                                key="editeur_suivi_actions"
-                            )
-
-                            nb_coches = int(df_edit_out["Terminé"].sum()) if not df_edit_out.empty else 0
                             if not est_admin_suivi:
-                                if st.button(f"✅ Valider {nb_coches} action(s) terminée(s)", type="primary",
-                                             use_container_width=True, disabled=(nb_coches == 0), key="btn_valider_suivi"):
-                                    lignes_a_marquer = df_affiche_suivi.loc[df_edit_out[df_edit_out["Terminé"]].index].copy()
-                                    lignes_a_marquer["Pilote"] = pilote_suivi_choisi
-                                    ok = marquer_actions_realisees(lignes_a_marquer, nom_responsable_suivi)
-                                    if ok:
-                                        st.success(f"{nb_coches} action(s) enregistrée(s) comme réalisée(s).")
+                                # ---- Vue responsable : une carte par action, avec choix Terminé / En cours ----
+                                TYPES_SUIVI = ["Immédiat", "Sous-traitance", "Planifié"]
+                                saisies_par_idx = {}
+                                defauts_par_idx = {}
+
+                                for idx, row_s in df_affiche_suivi.iterrows():
+                                    info_prealable = info_encours_par_cle.get(row_s["Cle"], {})
+                                    type_defaut = info_prealable.get("Type") or TYPES_SUIVI[0]
+                                    commentaire_defaut = info_prealable.get("Commentaire", "")
+                                    defauts_par_idx[idx] = (type_defaut, commentaire_defaut)
+
+                                    with st.container(border=True):
+                                        st.markdown(
+                                            f"<p style='margin:0 0 6px 0;font-size:13.5px;'>"
+                                            f"<strong>{row_s['Installation']}</strong> — {row_s['Site']} · Code {row_s['Code']}<br>"
+                                            f"<span style='color:#475569;'>{row_s['Désignation']} — {row_s['Observation']}</span></p>",
+                                            unsafe_allow_html=True
+                                        )
+                                        cA, cB = st.columns([1, 2])
+                                        with cA:
+                                            statut_choisi = st.radio(
+                                                "Statut", ["En cours", "Terminé"],
+                                                horizontal=True, key=f"statut_suivi_{idx}"
+                                            )
+                                        type_choisi, commentaire_choisi = None, ""
+                                        if statut_choisi == "En cours":
+                                            with cB:
+                                                idx_type_defaut = TYPES_SUIVI.index(type_defaut) if type_defaut in TYPES_SUIVI else 0
+                                                type_choisi = st.radio(
+                                                    "Type de suivi", TYPES_SUIVI,
+                                                    horizontal=True, index=idx_type_defaut, key=f"type_suivi_{idx}"
+                                                )
+                                            commentaire_choisi = st.text_input(
+                                                "Commentaire (optionnel)", value=commentaire_defaut, key=f"commentaire_suivi_{idx}"
+                                            )
+                                        saisies_par_idx[idx] = (statut_choisi, type_choisi, commentaire_choisi)
+
+                                nb_termine_saisi = sum(1 for s,_,_ in saisies_par_idx.values() if s == "Terminé")
+                                if st.button(f"💾 Enregistrer les modifications ({nb_termine_saisi} terminée(s))", type="primary",
+                                             use_container_width=True, key="btn_valider_suivi"):
+                                    erreur_maj = False
+                                    nb_termine_ok, nb_encours_ok = 0, 0
+                                    for idx, (statut_c, type_c, commentaire_c) in saisies_par_idx.items():
+                                        row_orig = df_affiche_suivi.loc[idx].copy()
+                                        row_orig["Pilote"] = pilote_suivi_choisi
+                                        if statut_c == "Terminé":
+                                            ok = marquer_actions_realisees(pd.DataFrame([row_orig]), nom_responsable_suivi)
+                                            erreur_maj = erreur_maj or not ok
+                                            nb_termine_ok += 1 if ok else 0
+                                        else:
+                                            type_defaut, commentaire_defaut = defauts_par_idx[idx]
+                                            if (type_c or "") == (type_defaut or "") and (commentaire_c or "") == (commentaire_defaut or ""):
+                                                continue  # rien n'a changé pour cette action, inutile de ré-écrire
+                                            ok = enregistrer_statut_en_cours(row_orig, type_c or TYPES_SUIVI[0], commentaire_c or "", nom_responsable_suivi)
+                                            erreur_maj = erreur_maj or not ok
+                                            nb_encours_ok += 1 if ok else 0
+
+                                    if erreur_maj:
+                                        st.error("Une erreur est survenue lors de l'enregistrement (vérifiez les onglets « ActionsRealisees » / « SuiviActions »).")
+                                    else:
+                                        st.success(f"{nb_termine_ok} action(s) marquée(s) terminée(s), {nb_encours_ok} mise(s) à jour « en cours ».")
                                         st.cache_data.clear()
                                         st.rerun()
-                                    else:
-                                        st.error("Erreur lors de l'enregistrement dans Google Sheets (vérifiez l'onglet « ActionsRealisees »).")
                             else:
+                                # ---- Vue admin : tableau récapitulatif en lecture seule ----
+                                df_recap = df_affiche_suivi[["Site", "Installation", "Désignation", "Observation", "Code"]].copy()
+                                df_recap["Type de suivi"] = df_affiche_suivi["Cle"].map(
+                                    lambda c: info_encours_par_cle.get(c, {}).get("Type") or "Non défini"
+                                )
+                                df_recap["Commentaire"] = df_affiche_suivi["Cle"].map(
+                                    lambda c: info_encours_par_cle.get(c, {}).get("Commentaire", "")
+                                )
+                                st.dataframe(df_recap, hide_index=True, use_container_width=True)
                                 st.caption("ℹ️ Vue administrateur en lecture seule.")
 
                         with st.expander(f"🗂️ Historique des actions réalisées ({len(df_hist_pilote)})"):
@@ -4134,3 +4213,82 @@ if acces_autorise:
                         fig_gauge.update_layout(height=220, margin=dict(t=20, b=10, l=20, r=20), paper_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
                         st.markdown(f"<p style='text-align:center;font-size:12px;color:#64748B;'>{nb_realisees} / {total_pilote} action(s) réalisée(s)</p>",unsafe_allow_html=True)
+
+                    # ---- Graphes complémentaires (Admin uniquement), affichés sous le tableau ----
+                    if est_admin_suivi:
+                        st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
+                        st.markdown(f"<p style='font-size:1.05rem;font-weight:700;color:#1E3A8A;'>📈 Analyse du suivi — {nom_responsable_suivi}</p>",unsafe_allow_html=True)
+
+                        gA, gB, gC = st.columns(3)
+
+                        # --- Graphe 1 : % Terminé vs En cours (pour le pilote sélectionné) ---
+                        with gA:
+                            en_cours_total = max(total_pilote - nb_realisees, 0)
+                            if total_pilote:
+                                df_g1 = pd.DataFrame({"Statut": ["Terminé", "En cours"], "Nombre": [nb_realisees, en_cours_total]})
+                                fig1 = px.pie(df_g1, values="Nombre", names="Statut", hole=0.6, color="Statut",
+                                              color_discrete_map={"Terminé": "#16A34A", "En cours": "#F97316"})
+                                fig1.update_traces(textposition='inside', textinfo='percent+value')
+                                fig1.update_layout(title="Terminé vs En cours", title_x=0.5,
+                                                    margin=dict(t=40,b=10,l=10,r=10), height=300,
+                                                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                                    legend=dict(font=dict(size=9)))
+                                st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
+                            else:
+                                st.info("Aucune donnée.")
+
+                        # --- Graphe 2 : % Immédiat / Sous-traitance / Planifié parmi les actions en cours ---
+                        with gB:
+                            cles_en_cours_g = set(df_restantes["Cle"]) if "Cle" in df_restantes.columns else set()
+                            compte_type_g = {"Immédiat": 0, "Sous-traitance": 0, "Planifié": 0, "Non défini": 0}
+                            for cle_g in cles_en_cours_g:
+                                t_g = info_encours_par_cle.get(cle_g, {}).get("Type") or "Non défini"
+                                if t_g not in compte_type_g:
+                                    t_g = "Non défini"
+                                compte_type_g[t_g] += 1
+                            df_g2 = pd.DataFrame({"Type": list(compte_type_g.keys()), "Nombre": list(compte_type_g.values())})
+                            df_g2 = df_g2[df_g2["Nombre"] > 0]
+                            if not df_g2.empty:
+                                fig2 = px.pie(df_g2, values="Nombre", names="Type", hole=0.6, color="Type",
+                                              color_discrete_map={"Immédiat": "#2563EB", "Sous-traitance": "#F59E0B",
+                                                                   "Planifié": "#8B5CF6", "Non défini": "#94A3B8"})
+                                fig2.update_traces(textposition='inside', textinfo='percent+value')
+                                fig2.update_layout(title="Répartition des actions en cours", title_x=0.5,
+                                                    margin=dict(t=40,b=10,l=10,r=10), height=300,
+                                                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                                    legend=dict(font=dict(size=9)))
+                                st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
+                            else:
+                                st.info("Aucune action en cours.")
+
+                        # --- Graphe 3 : répartition globale des tâches par responsable (tous sites/pilotes) ---
+                        with gC:
+                            if not df_codif_suivi.empty:
+                                compte_resp_global = {}
+                                for _, r_g in df_codif_suivi.iterrows():
+                                    pilote_str_g = NATURE_PILOTE.get(r_g.get("Code", ""), ("", ""))[1]
+                                    for e_g in str(pilote_str_g).split("+"):
+                                        e_g = e_g.strip()
+                                        if not e_g:
+                                            continue
+                                        compte_resp_global[e_g] = compte_resp_global.get(e_g, 0) + 1
+                                total_resp_global = sum(compte_resp_global.values())
+                                if compte_resp_global and total_resp_global:
+                                    df_g3 = pd.DataFrame({"Responsable": list(compte_resp_global.keys()),
+                                                           "Nombre": list(compte_resp_global.values())})
+                                    df_g3["Pourcentage"] = (df_g3["Nombre"]/total_resp_global*100).round(1)
+                                    df_g3 = df_g3.sort_values("Pourcentage", ascending=True)
+                                    palette_resp_g = px.colors.qualitative.Set1
+                                    color_map_resp_g = {p: palette_resp_g[i % len(palette_resp_g)] for i,p in enumerate(df_g3["Responsable"])}
+                                    fig3 = px.bar(df_g3, x="Pourcentage", y="Responsable", orientation="h", text="Pourcentage",
+                                                  color="Responsable", color_discrete_map=color_map_resp_g)
+                                    fig3.update_traces(texttemplate='%{text}%', textposition='outside', cliponaxis=False)
+                                    fig3.update_layout(title="Répartition par responsable", title_x=0.5, showlegend=False,
+                                                        xaxis_title="% des actions", yaxis_title="",
+                                                        margin=dict(t=40,b=10,l=10,r=30), height=300,
+                                                        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+                                    st.plotly_chart(fig3, use_container_width=True, config={'displayModeBar': False})
+                                else:
+                                    st.info("Aucune donnée.")
+                            else:
+                                st.info("Aucune donnée.")
