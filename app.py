@@ -12,6 +12,7 @@ import requests
 import calendar
 import base64
 import io
+import unicodedata
 from weasyprint import HTML
 import fitz
 
@@ -1571,7 +1572,61 @@ def codif_charger_classeur(sheet_id):
     return None, f"Erreur API Google Drive ({dernier_status}){meta_msg} : {str(dernier_texte)[:300]}"
 
 
-def _detecter_entete_et_nettoyer_codif(valeurs):
+# Noms EXACTS des colonnes (Désignation | Observation | Code) pour chaque type d'installation,
+# tels que mis à jour dans les classeurs de codification MEG et SGB (structure identique sur les
+# deux sites, seul le nom de l'onglet change : "... - MEG" / "... - SGB").
+# Format : (mots-clés identifiant le type d'installation à partir du nom de l'onglet,
+#           nom exact colonne désignation, nom exact colonne observation, nom exact colonne code)
+COLONNES_CODIF_PAR_INSTALLATION = [
+    (["electrique"],           "Désignation", "Observation",                    "C"),
+    (["levage"],                "Rapport",     "Organes examines NC",            "C"),
+    (["pression"],               "Rapport",     "Points examines non conforme",   "C"),
+    (["gaz"],                   "Rapport",     "Points examines non conforme",   "C"),
+    (["incendie"],               "Local",       "Observation",                    "C"),
+]
+
+
+def _sans_accents(texte):
+    """Retire les accents d'une chaîne pour faciliter les comparaisons insensibles aux accents."""
+    return "".join(c for c in unicodedata.normalize("NFD", str(texte)) if unicodedata.category(c) != "Mn")
+
+
+def _normaliser(texte):
+    return _sans_accents(texte).strip().lower()
+
+
+def _colonnes_attendues_pour_onglet(onglet):
+    """Détermine, à partir du nom de l'onglet (ex: 'Installation électrique - MEG' ou
+    'Sécurité incendie - SGB'), les noms exacts des colonnes Désignation/Observation/Code à
+    utiliser pour cet onglet. Retourne None si le type d'installation n'est pas reconnu
+    (repli sur la détection générique par mots-clés)."""
+    if not onglet:
+        return None
+    # On retire un éventuel suffixe de site ("- MEG" / "- SGB") pour ne garder que le type
+    # d'installation, puis on teste les mots-clés dans un ordre où les plus spécifiques
+    # ("pression") sont vérifiés avant les plus génériques ("gaz").
+    base = re.sub(r"\s*-\s*(meg|sgb)\s*$", "", onglet, flags=re.IGNORECASE).strip()
+    base_norm = _normaliser(base)
+    for mots_cles, nom_desig, nom_obs, nom_code in COLONNES_CODIF_PAR_INSTALLATION:
+        if all(mc in base_norm for mc in mots_cles):
+            return (nom_desig, nom_obs, nom_code)
+    return None
+
+
+def _trouver_colonne_exacte(colonnes, nom_attendu):
+    """Recherche une colonne correspondant exactement (insensible aux accents/casse) au nom
+    attendu ; à défaut, se rabat sur une correspondance partielle."""
+    cible = _normaliser(nom_attendu)
+    for c in colonnes:
+        if _normaliser(c) == cible:
+            return c
+    for c in colonnes:
+        if cible in _normaliser(c):
+            return c
+    return None
+
+
+def _detecter_entete_et_nettoyer_codif(valeurs, onglet=None):
     """Prend les lignes brutes (liste de listes) d'un onglet du classeur de codification et
     retourne un DataFrame propre avec les colonnes Designation | Observation | Code.
     Cherche automatiquement la ligne d'en-tête, en tolérant les différents intitulés utilisés
@@ -1584,11 +1639,22 @@ def _detecter_entete_et_nettoyer_codif(valeurs):
     MOTS_CLES_EQUIP = ["désignation", "designation", "équipement", "equipement", "rapport"]
     MOTS_CLES_OBS   = ["observation", "organe", "examin", "problème", "probleme", "action"]
 
+    # Colonnes exactes attendues pour ce type d'installation (déduites du nom de l'onglet),
+    # sinon repli sur la détection générique par mots-clés (ancien comportement).
+    colonnes_attendues = _colonnes_attendues_pour_onglet(onglet)
+
     idx_entete = None
     for i, ligne in enumerate(valeurs):
         cellules = [str(c).strip().lower() for c in ligne]
-        a_equip = any(any(mc in c for mc in MOTS_CLES_EQUIP) for c in cellules)
-        a_obs   = any(any(mc in c for mc in MOTS_CLES_OBS) for c in cellules)
+        if colonnes_attendues:
+            nom_desig, nom_obs, _nom_code = colonnes_attendues
+            cible_desig = _normaliser(nom_desig)
+            cible_obs = _normaliser(nom_obs)
+            a_equip = any(_normaliser(c) == cible_desig for c in cellules)
+            a_obs   = any(_normaliser(c) == cible_obs for c in cellules)
+        else:
+            a_equip = any(any(mc in c for mc in MOTS_CLES_EQUIP) for c in cellules)
+            a_obs   = any(any(mc in c for mc in MOTS_CLES_OBS) for c in cellules)
         if a_equip and a_obs:
             idx_entete = i
             break
@@ -1612,17 +1678,23 @@ def _detecter_entete_et_nettoyer_codif(valeurs):
                     return c
         return None
 
-    col_desig = _trouver_colonne(df.columns, [
-        ["désignation", "designation", "équipement", "equipement"],
-        ["rapport"],
-    ])
-    col_obs = _trouver_colonne(df.columns, [
-        ["observation"],
-        ["organe", "examin"],
-        ["problème", "probleme"],
-        ["action"],
-    ])
-    col_code  = next((c for c in df.columns if c.strip().lower() in ("c", "code")), None)
+    if colonnes_attendues:
+        nom_desig, nom_obs, nom_code = colonnes_attendues
+        col_desig = _trouver_colonne_exacte(df.columns, nom_desig)
+        col_obs   = _trouver_colonne_exacte(df.columns, nom_obs)
+        col_code  = _trouver_colonne_exacte(df.columns, nom_code)
+    else:
+        col_desig = _trouver_colonne(df.columns, [
+            ["désignation", "designation", "équipement", "equipement"],
+            ["rapport"],
+        ])
+        col_obs = _trouver_colonne(df.columns, [
+            ["observation"],
+            ["organe", "examin"],
+            ["problème", "probleme"],
+            ["action"],
+        ])
+        col_code  = next((c for c in df.columns if c.strip().lower() in ("c", "code")), None)
     if not (col_desig and col_obs and col_code):
         return pd.DataFrame()
 
@@ -1663,7 +1735,7 @@ def codif_charger_toutes_actions():
             continue
         for onglet, df_brut in classeur.items():
             valeurs = df_brut.fillna("").astype(str).values.tolist()
-            d = _detecter_entete_et_nettoyer_codif(valeurs)
+            d = _detecter_entete_et_nettoyer_codif(valeurs, onglet)
             if not d.empty:
                 d["Installation"] = onglet
                 d["Site"] = site
