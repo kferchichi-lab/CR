@@ -180,7 +180,64 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
     </style>
     </head>
     <body>
+    <div class="page">
+        <div class="page-header">
+            <img src="{logo_url}"/>
+            <span class="page-header-text">Tunisie Profilés d'Aluminium — Direction Maintenance &amp; TN</span>
+        </div>
+        <div class="header-title">Rapport d'inspection — Check-list des équipements</div>
+        <div class="meta-info">
+            <strong>Site :</strong> {site_filtre.upper()}<br>
+            <strong>Date d'édition :</strong> {datetime.date.today().strftime('%d/%m/%Y')}
+        </div>
     """
+
+    if df_eq.empty:
+        html_content += """
+        <p style="color:#94A3B8;font-size:11pt;">Aucun équipement enregistré pour ce site.</p>
+        """
+    else:
+        for installation in installations:
+            df_ins = df_eq[df_eq.get("Installation", pd.Series(dtype=str)).astype(str).str.strip() == installation]
+            if df_ins.empty:
+                continue
+            lignes_html = ""
+            for _, row in df_ins.iterrows():
+                sous_eq = row.get("Sous_equipement", "")
+                try:
+                    nombre = int(float(row.get("Nombre", 0) or 0))
+                except (ValueError, TypeError):
+                    nombre = row.get("Nombre", "")
+                lignes_html += f"""
+                <tr>
+                    <td class="col-sub">{sous_eq}</td>
+                    <td class="col-nb td-center">{nombre}</td>
+                    <td class="col-chk td-center"><span class="checkbox-box"></span></td>
+                </tr>"""
+            html_content += f"""
+            <div class="category-title">{installation}</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-sub">Sous-équipement</th>
+                        <th class="col-nb">Nombre</th>
+                        <th class="col-chk">Vérifié</th>
+                    </tr>
+                </thead>
+                <tbody>{lignes_html}</tbody>
+            </table>
+            """
+
+    html_content += """
+        <div class="signature-section">
+            <p class="signature-title">Signature du contrôleur :</p>
+        </div>
+    </div>
+    </body>
+    </html>
+    """
+
+    return HTML(string=html_content).write_pdf()
 
 # -------------------------------------------------------------------------------
 # Calcul du tableau + génération PDF / Excel
