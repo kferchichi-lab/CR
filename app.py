@@ -2017,6 +2017,7 @@ with st.sidebar:
         "SABER": {"password":"SABER123*","nom":"Saber BEN CHAABEN","entites":["Maintenance"]},
         "HSE":   {"password":"HSE123*",  "nom":"Montassar MEHRABI","entites":["HSE"]},
         "AICHA": {"password":"AICHA123*","nom":"Aïcha BELLAKHAL",  "entites":["BT","Chef service BT","RH","DG"]},
+        "CHAFIK": {"password":"chafik123*","nom":"Chafik ABID",    "entites":["Maintenance"]},
     }
     if "responsable_connecte" not in st.session_state: st.session_state.responsable_connecte=False
     if "responsable_actif" not in st.session_state: st.session_state.responsable_actif=None
