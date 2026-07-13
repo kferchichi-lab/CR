@@ -3961,10 +3961,10 @@ if acces_autorise:
                                 install_f_suivi = st.selectbox("Installation", ["Toutes"]+installations_dispo_suivi, key="installation_filtre_suivi")
                             df_affiche_suivi = df_apres_site_suivi if install_f_suivi == "Toutes" else df_apres_site_suivi[df_apres_site_suivi["Installation"] == install_f_suivi]
 
-                            df_edit = df_affiche_suivi[["Site", "Installation", "Designation", "Observation", "Code"]].copy()
+                            df_edit = df_affiche_suivi[["Site", "Installation", "Désignation", "Observation", "Code"]].copy()
                             df_edit.insert(0, "Terminé", False)
 
-                            colonnes_verrouillees = ["Site", "Installation", "Designation", "Observation", "Code"]
+                            colonnes_verrouillees = ["Site", "Installation", "Désignation", "Observation", "Code"]
                             if est_admin_suivi:
                                 colonnes_verrouillees.append("Terminé")
 
