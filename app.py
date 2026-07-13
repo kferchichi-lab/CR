@@ -4109,57 +4109,50 @@ if acces_autorise:
                             df_affiche_suivi = df_apres_site_suivi if install_f_suivi == "Toutes" else df_apres_site_suivi[df_apres_site_suivi["Installation"] == install_f_suivi]
 
                             if not est_admin_suivi:
-                                # ---- Vue responsable : une carte par action, avec choix Terminé / En cours ----
+                                # ---- Vue responsable : un tableau, avec colonnes Statut / Type de suivi / Commentaire ----
                                 TYPES_SUIVI = ["Immédiat", "Sous-traitance", "Planifié"]
-                                saisies_par_idx = {}
-                                defauts_par_idx = {}
 
-                                for idx, row_s in df_affiche_suivi.iterrows():
-                                    info_prealable = info_encours_par_cle.get(row_s["Cle"], {})
-                                    type_defaut = info_prealable.get("Type") or TYPES_SUIVI[0]
-                                    commentaire_defaut = info_prealable.get("Commentaire", "")
-                                    defauts_par_idx[idx] = (type_defaut, commentaire_defaut)
+                                df_edit = df_affiche_suivi[["Site", "Installation", "Désignation", "Observation", "Code"]].copy()
+                                df_edit.insert(0, "Statut", "En cours")
+                                df_edit["Type de suivi"] = df_affiche_suivi["Cle"].map(
+                                    lambda c: info_encours_par_cle.get(c, {}).get("Type") or None
+                                )
+                                df_edit["Commentaire"] = df_affiche_suivi["Cle"].map(
+                                    lambda c: info_encours_par_cle.get(c, {}).get("Commentaire", "")
+                                )
 
-                                    with st.container(border=True):
-                                        st.markdown(
-                                            f"<p style='margin:0 0 6px 0;font-size:13.5px;'>"
-                                            f"<strong>{row_s['Installation']}</strong> — {row_s['Site']} · Code {row_s['Code']}<br>"
-                                            f"<span style='color:#475569;'>{row_s['Désignation']} — {row_s['Observation']}</span></p>",
-                                            unsafe_allow_html=True
-                                        )
-                                        cA, cB = st.columns([1, 2])
-                                        with cA:
-                                            statut_choisi = st.radio(
-                                                "Statut", ["En cours", "Terminé"],
-                                                horizontal=True, key=f"statut_suivi_{idx}"
-                                            )
-                                        type_choisi, commentaire_choisi = None, ""
-                                        if statut_choisi == "En cours":
-                                            with cB:
-                                                idx_type_defaut = TYPES_SUIVI.index(type_defaut) if type_defaut in TYPES_SUIVI else 0
-                                                type_choisi = st.radio(
-                                                    "Type de suivi", TYPES_SUIVI,
-                                                    horizontal=True, index=idx_type_defaut, key=f"type_suivi_{idx}"
-                                                )
-                                            commentaire_choisi = st.text_input(
-                                                "Commentaire (optionnel)", value=commentaire_defaut, key=f"commentaire_suivi_{idx}"
-                                            )
-                                        saisies_par_idx[idx] = (statut_choisi, type_choisi, commentaire_choisi)
+                                df_edit_out = st.data_editor(
+                                    df_edit,
+                                    hide_index=True,
+                                    use_container_width=True,
+                                    disabled=["Site", "Installation", "Désignation", "Observation", "Code"],
+                                    column_config={
+                                        "Statut": st.column_config.SelectboxColumn("Statut", options=["En cours", "Terminé"], required=True),
+                                        "Type de suivi": st.column_config.SelectboxColumn("Type de suivi (si en cours)", options=TYPES_SUIVI, required=False),
+                                        "Commentaire": st.column_config.TextColumn("Commentaire (optionnel)"),
+                                    },
+                                    key="editeur_suivi_actions"
+                                )
 
-                                nb_termine_saisi = sum(1 for s,_,_ in saisies_par_idx.values() if s == "Terminé")
+                                nb_termine_saisi = int((df_edit_out["Statut"] == "Terminé").sum()) if not df_edit_out.empty else 0
                                 if st.button(f"💾 Enregistrer les modifications ({nb_termine_saisi} terminée(s))", type="primary",
                                              use_container_width=True, key="btn_valider_suivi"):
                                     erreur_maj = False
                                     nb_termine_ok, nb_encours_ok = 0, 0
-                                    for idx, (statut_c, type_c, commentaire_c) in saisies_par_idx.items():
+                                    for idx, row_edit in df_edit_out.iterrows():
                                         row_orig = df_affiche_suivi.loc[idx].copy()
                                         row_orig["Pilote"] = pilote_suivi_choisi
+                                        statut_c = row_edit["Statut"]
+                                        type_c = row_edit.get("Type de suivi")
+                                        commentaire_c = row_edit.get("Commentaire", "")
                                         if statut_c == "Terminé":
                                             ok = marquer_actions_realisees(pd.DataFrame([row_orig]), nom_responsable_suivi)
                                             erreur_maj = erreur_maj or not ok
                                             nb_termine_ok += 1 if ok else 0
                                         else:
-                                            type_defaut, commentaire_defaut = defauts_par_idx[idx]
+                                            info_prealable = info_encours_par_cle.get(row_orig["Cle"], {})
+                                            type_defaut = info_prealable.get("Type", "")
+                                            commentaire_defaut = info_prealable.get("Commentaire", "")
                                             if (type_c or "") == (type_defaut or "") and (commentaire_c or "") == (commentaire_defaut or ""):
                                                 continue  # rien n'a changé pour cette action, inutile de ré-écrire
                                             ok = enregistrer_statut_en_cours(row_orig, type_c or TYPES_SUIVI[0], commentaire_c or "", nom_responsable_suivi)
