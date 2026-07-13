@@ -90,42 +90,47 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
         .page:last-child {{
             page-break-after: avoid;
         }}
-        .header-title {{
-            text-align: center;
-            font-size: 18pt;
-            font-weight: bold;
-            color: #1E3A8A;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            border-bottom: 2px solid #1E3A8A;
-            padding-bottom: 10px;
-        }}
         .page-header {{
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 16px;
+            margin-bottom: 22px;
             padding-bottom: 10px;
             border-bottom: 1px solid #E2E8F0;
         }}
         .page-header img {{
-            height: 36px;
+            height: 30px;
         }}
         .page-header-text {{
             font-size: 9.5pt;
-            color: #64748B;
-            font-weight: 600;
+            color: #1E3A8A;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.4px;
         }}
+        .header-title {{
+            text-align: center;
+            font-size: 17pt;
+            font-weight: bold;
+            color: #1E3A8A;
+            margin-bottom: 22px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #1E3A8A;
+            padding-bottom: 14px;
+            line-height: 1.35;
+        }}
         .meta-info {{
-            margin-bottom: 25px;
+            margin-bottom: 28px;
             background-color: #F8FAFC;
             border: 1px solid #E2E8F0;
-            padding: 15px;
+            padding: 16px 18px;
             border-radius: 6px;
-            line-height: 1.8;
+            line-height: 2.1;
             font-size: 11pt;
+        }}
+        .meta-info .dots {{
+            color: #94A3B8;
+            letter-spacing: 1px;
         }}
         .category-title {{
             font-size: 14pt;
@@ -157,7 +162,7 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
         .col-nb {{ width: 20%; text-align: center; }}
         .col-chk {{ width: 20%; text-align: center; }}
         .td-center {{ text-align: center; }}
-        
+
         .checkbox-box {{
             display: inline-block;
             width: 14px;
@@ -177,26 +182,46 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
             text-decoration: underline;
             margin-bottom: 60px;
         }}
+        .empty-message {{
+            color: #94A3B8;
+            font-size: 11pt;
+        }}
     </style>
     </head>
     <body>
-    <div class="page">
+    """
+
+    def bloc_entete():
+        return f"""
         <div class="page-header">
             <img src="{logo_url}"/>
             <span class="page-header-text">Tunisie Profilés d'Aluminium — Direction Maintenance &amp; TN</span>
         </div>
-        <div class="header-title">Rapport d'inspection — Check-list des équipements</div>
+        <div class="header-title">Rapport d'inspection réglementaire — Site {site_filtre.upper()}</div>
         <div class="meta-info">
-            <strong>Site :</strong> {site_filtre.upper()}<br>
-            <strong>Date d'édition :</strong> {datetime.date.today().strftime('%d/%m/%Y')}
+            <strong>Inspecteur technique :</strong> <span class="dots">…………………………………………………………………</span><br>
+            <strong>Accompagnant :</strong> <span class="dots">……………………………………………………………………………</span><br>
+            <strong>Date :</strong> <span class="dots">………………………………………………………………………………………</span>
         </div>
-    """
+        """
+
+    def bloc_signature():
+        return """
+        <div class="signature-section">
+            <p class="signature-title">Signature :</p>
+        </div>
+        """
 
     if df_eq.empty:
-        html_content += """
-        <p style="color:#94A3B8;font-size:11pt;">Aucun équipement enregistré pour ce site.</p>
+        html_content += f"""
+        <div class="page">
+            {bloc_entete()}
+            <p class="empty-message">Aucun équipement enregistré pour ce site.</p>
+            {bloc_signature()}
+        </div>
         """
     else:
+        pages_generees = 0
         for installation in installations:
             df_ins = df_eq[df_eq.get("Installation", pd.Series(dtype=str)).astype(str).str.strip() == installation]
             if df_ins.empty:
@@ -214,25 +239,36 @@ def generer_rapport_equipements_pdf(df_exigences, site_filtre):
                     <td class="col-nb td-center">{nombre}</td>
                     <td class="col-chk td-center"><span class="checkbox-box"></span></td>
                 </tr>"""
+
             html_content += f"""
-            <div class="category-title">{installation}</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th class="col-sub">Sous-équipement</th>
-                        <th class="col-nb">Nombre</th>
-                        <th class="col-chk">Vérifié</th>
-                    </tr>
-                </thead>
-                <tbody>{lignes_html}</tbody>
-            </table>
+            <div class="page">
+                {bloc_entete()}
+                <div class="category-title">{installation}</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="col-sub">Sous-équipements</th>
+                            <th class="col-nb">Nombre</th>
+                            <th class="col-chk">Case à cocher</th>
+                        </tr>
+                    </thead>
+                    <tbody>{lignes_html}</tbody>
+                </table>
+                {bloc_signature()}
+            </div>
+            """
+            pages_generees += 1
+
+        if pages_generees == 0:
+            html_content += f"""
+            <div class="page">
+                {bloc_entete()}
+                <p class="empty-message">Aucun équipement enregistré pour ce site.</p>
+                {bloc_signature()}
+            </div>
             """
 
     html_content += """
-        <div class="signature-section">
-            <p class="signature-title">Signature du contrôleur :</p>
-        </div>
-    </div>
     </body>
     </html>
     """
