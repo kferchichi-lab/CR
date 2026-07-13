@@ -1699,11 +1699,11 @@ def _detecter_entete_et_nettoyer_codif(valeurs, onglet=None):
         return pd.DataFrame()
 
     df = df[[col_desig, col_obs, col_code]].copy()
-    df.columns = ["Designation", "Observation", "Code"]
+    df.columns = ["Désignation", "Observation", "Code"]
     for c in df.columns:
         df[c] = df[c].astype(str).str.strip()
         df[c] = df[c].replace("nan", "")
-    df["Designation"] = df["Designation"].replace("", pd.NA).ffill().fillna("")
+    df["Désignation"] = df["Désignation"].replace("", pd.NA).ffill().fillna("")
     df["Code"] = df["Code"].str.upper()
     df = df[(df["Observation"] != "") & (df["Code"] != "")]
     df = df[df["Code"].isin(NATURE_PILOTE.keys())]
