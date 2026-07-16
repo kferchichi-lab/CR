@@ -779,12 +779,11 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
         svg = (f'<svg viewBox="0 0 {w_total} {size+22}" width="{w_total}" height="{size+22}" '
                f'xmlns="http://www.w3.org/2000/svg">{titre_svg}{slices}{labels}</svg>')
         legend = "".join(
-            f'<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:9px;">'
-            f'<div style="display:flex;align-items:center;gap:7px;">'
+            f'<div style="display:flex;align-items:center;margin-bottom:9px;">'
             f'<span style="width:11px;height:11px;min-width:11px;border-radius:3px;'
-            f'background:{color_map.get(l,"#94A3B8")};display:inline-block;"></span>'
-            f'<span style="font-size:10pt;color:#334155;white-space:nowrap;">{l}</span></div>'
-            f'<span style="font-size:10pt;font-weight:800;color:#0F172A;white-space:nowrap;">{(v/total*100):.1f}%</span>'
+            f'background:{color_map.get(l,"#94A3B8")};display:inline-block;margin-right:8px;"></span>'
+            f'<span style="font-size:10pt;color:#334155;white-space:nowrap;">{l}</span>'
+            f'<span style="font-size:10pt;font-weight:800;color:#0F172A;white-space:nowrap;margin-left:14px;">{(v/total*100):.1f}%</span>'
             f'</div>'
             for l, v in data.items()
         )
@@ -823,21 +822,12 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
 
     def _ins_donut(site):
         if df_r.empty or "Installation" not in df_r.columns or "Site" not in df_r.columns:
-            return ""
+            return "", ""
         d = df_r[df_r["Site"] == site].groupby("Installation")["Nombre"].sum().to_dict()
-        svg, _ = _donut_chart(d, COULEURS_INS, site, size=185)
-        return svg
+        return _donut_chart(d, COULEURS_INS, site, size=185, show_pct_labels=False)
 
-    meg_ins_svg = _ins_donut("MEG")
-    sgb_ins_svg = _ins_donut("SGB")
-    toutes_ins = sorted(df_r["Installation"].dropna().unique().tolist()) if (not df_r.empty and "Installation" in df_r.columns) else []
-    ins_legend_commune = "".join(
-        f'<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;">'
-        f'<span style="width:11px;height:11px;min-width:11px;border-radius:3px;'
-        f'background:{COULEURS_INS.get(i,"#94A3B8")};display:inline-block;"></span>'
-        f'<span style="font-size:9.5pt;color:#334155;">{i}</span></div>'
-        for i in toutes_ins
-    )
+    meg_ins_svg, meg_ins_legend = _ins_donut("MEG")
+    sgb_ins_svg, sgb_ins_legend = _ins_donut("SGB")
 
     # ---- Section 2 : Répartition par site — Nature et Pilote (source : PointsReserveNature) ----
     df_n = df_nature.copy() if (df_nature is not None and not df_nature.empty) else pd.DataFrame()
@@ -975,13 +965,24 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
         <p style="font-weight:700;font-size:12pt;color:#0F172A;text-align:center;margin:20px 0 12px 0;">
         Répartition par installation</p>
 
-        <div style="display:flex;justify-content:center;align-items:center;gap:15px;">
-            <div style="flex:1;text-align:center;">
-                {meg_ins_svg if meg_ins_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée MEG</p>"}
+        <div style="display:flex;gap:40px;">
+            <div style="flex:1;">
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;text-align:center;margin:0 0 10px 0;">MEG</p>
+                <div style="display:flex;justify-content:center;align-items:center;gap:20px;">
+                    <div style="flex:0 0 auto;">
+                        {meg_ins_svg if meg_ins_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée MEG</p>"}
+                    </div>
+                    <div style="flex:0 0 180px;">{meg_ins_legend}</div>
+                </div>
             </div>
-            <div style="flex:0 0 170px;">{ins_legend_commune}</div>
-            <div style="flex:1;text-align:center;">
-                {sgb_ins_svg if sgb_ins_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée SGB</p>"}
+            <div style="flex:1;">
+                <p style="font-weight:700;font-size:11pt;color:#0F172A;text-align:center;margin:0 0 10px 0;">SGB</p>
+                <div style="display:flex;justify-content:center;align-items:center;gap:20px;">
+                    <div style="flex:0 0 auto;">
+                        {sgb_ins_svg if sgb_ins_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée SGB</p>"}
+                    </div>
+                    <div style="flex:0 0 180px;">{sgb_ins_legend}</div>
+                </div>
             </div>
         </div>
     </div>
