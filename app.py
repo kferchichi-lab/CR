@@ -1030,7 +1030,7 @@ def generer_rapport_pilote_pdf(pilote_choisi, df_filtre, logo_url):
     la codification (classeur externe) qui le concernent — une page par installation
     (= un onglet du classeur source), sous forme de fiche de suivi terrain :
     Equipement | Actions | Responsable | Etat (Immédiat/Sous-traitant*/Planifié*) | Réalisation (O/N) | Observation.
-    df_filtre doit contenir les colonnes : Installation, Designation, Observation, Code, Nature.
+    df_filtre doit contenir les colonnes : Installation, Désignation, Observation, Code, Nature.
     """
     date_str = datetime.date.today().strftime('%d/%m/%Y')
     installations = list(dict.fromkeys(df_filtre["Installation"].tolist()))  # ordre stable, sans doublons
@@ -1729,7 +1729,7 @@ def _trouver_colonne_exacte(colonnes, nom_attendu):
 
 def _detecter_entete_et_nettoyer_codif(valeurs, onglet=None):
     """Prend les lignes brutes (liste de listes) d'un onglet du classeur de codification et
-    retourne un DataFrame propre avec les colonnes Designation | Observation | Code.
+    retourne un DataFrame propre avec les colonnes Désignation | Observation | Code.
     Cherche automatiquement la ligne d'en-tête, en tolérant les différents intitulés utilisés
     selon les onglets (ex: 'Désignation'/'Rapport' pour l'équipement,
     'Observation'/'Organes examinés NC'/'Problème' pour l'action), et complète (forward-fill)
@@ -1737,7 +1737,7 @@ def _detecter_entete_et_nettoyer_codif(valeurs, onglet=None):
     if not valeurs:
         return pd.DataFrame()
 
-    MOTS_CLES_EQUIP = ["désignation", "designation", "équipement", "equipement", "rapport"]
+    MOTS_CLES_EQUIP = ["désignation", "désignation", "équipement", "equipement", "rapport"]
     MOTS_CLES_OBS   = ["observation", "organe", "examin", "problème", "probleme", "action"]
 
     # Colonnes exactes attendues pour ce type d'installation (déduites du nom de l'onglet),
@@ -1786,7 +1786,7 @@ def _detecter_entete_et_nettoyer_codif(valeurs, onglet=None):
         col_code  = _trouver_colonne_exacte(df.columns, nom_code)
     else:
         col_desig = _trouver_colonne(df.columns, [
-            ["désignation", "designation", "équipement", "equipement"],
+            ["désignation", "désignation", "équipement", "equipement"],
             ["rapport"],
         ])
         col_obs = _trouver_colonne(df.columns, [
@@ -1825,7 +1825,7 @@ def _codes_pour_pilote(pilote_choisi):
 @st.cache_data(ttl=300, show_spinner=False)
 def codif_charger_toutes_actions():
     """Charge et combine les classeurs de codification des deux sites (MEG et SGB).
-    Retourne (DataFrame combiné [Site, Installation, Designation, Observation, Code], message_erreur_ou_None)."""
+    Retourne (DataFrame combiné [Site, Installation, Désignation, Observation, Code], message_erreur_ou_None)."""
     frames, erreurs = [], []
     for site, sheet_id in CODIF_SHEET_ID_PAR_SITE.items():
         classeur, err = codif_charger_classeur(sheet_id)
@@ -1849,11 +1849,11 @@ def codif_charger_toutes_actions():
 def _cle_action(row):
     """Clé unique identifiant une action précise, utilisée pour repérer les actions déjà réalisées."""
     return "||".join(str(row.get(c, "")).strip().upper() for c in
-                      ["Site", "Installation", "Designation", "Observation", "Code"])
+                      ["Site", "Installation", "Désignation", "Observation", "Code"])
 
 
 def lire_actions_realisees():
-    """Lit l'onglet ActionsRealisees : Site | Installation | Designation | Observation | Code | Pilote | Responsable | DateRealisation."""
+    """Lit l'onglet ActionsRealisees : Site | Installation | Désignation | Observation | Code | Pilote | Responsable | DateRealisation."""
     return sheets_lire("ActionsRealisees", "A:H")
 
 
@@ -1863,7 +1863,7 @@ def marquer_actions_realisees(df_lignes, responsable_nom):
     ok_total = True
     for _, row in df_lignes.iterrows():
         ok, _msg = sheets_append("ActionsRealisees", [
-            row.get("Site", ""), row.get("Installation", ""), row.get("Designation", ""),
+            row.get("Site", ""), row.get("Installation", ""), row.get("Désignation", ""),
             row.get("Observation", ""), row.get("Code", ""), row.get("Pilote", ""),
             responsable_nom, date_str
         ])
@@ -1872,7 +1872,7 @@ def marquer_actions_realisees(df_lignes, responsable_nom):
 
 
 def lire_suivi_encours():
-    """Lit l'onglet SuiviActions : Site | Installation | Designation | Observation | Code | Pilote |
+    """Lit l'onglet SuiviActions : Site | Installation | Désignation | Observation | Code | Pilote |
     Statut | Type | Commentaire | Responsable | DateMaJ.
     Ne garde que la dernière saisie connue pour chaque action (une action peut être mise à jour
     plusieurs fois : seule la ligne la plus récente fait foi)."""
@@ -1889,7 +1889,7 @@ def enregistrer_statut_en_cours(row, type_suivi, commentaire, responsable_nom):
     de suivi (Immédiat / Sous-traitance / Planifié) et un commentaire libre facultatif."""
     date_str = datetime.datetime.now(TZ).strftime("%d/%m/%Y %H:%M")
     ok, _msg = sheets_append("SuiviActions", [
-        row.get("Site", ""), row.get("Installation", ""), row.get("Designation", ""),
+        row.get("Site", ""), row.get("Installation", ""), row.get("Désignation", ""),
         row.get("Observation", ""), row.get("Code", ""), row.get("Pilote", ""),
         "En cours", type_suivi, commentaire, responsable_nom, date_str
     ])
@@ -1897,10 +1897,10 @@ def enregistrer_statut_en_cours(row, type_suivi, commentaire, responsable_nom):
 
 
 def _lignes_avec_rowspan(d_ins):
-    """Regroupe les lignes consécutives ayant le même Equipement (Designation) pour permettre
+    """Regroupe les lignes consécutives ayant le même Equipement (Désignation) pour permettre
     une fusion de cellules (rowspan) dans le tableau PDF.
     Retourne une liste de tuples (equipement_ou_None, rowspan_ou_None, observation)."""
-    valeurs = d_ins["Designation"].tolist()
+    valeurs = d_ins["Désignation"].tolist()
     obs = d_ins["Observation"].tolist()
     lignes = []
     i, n = 0, len(valeurs)
@@ -4219,7 +4219,7 @@ if acces_autorise:
                             if df_hist_pilote.empty:
                                 st.info("Aucune action réalisée pour le moment.")
                             else:
-                                cols_hist = [c for c in ["DateRealisation", "Site", "Installation", "Designation", "Observation", "Code", "Responsable"] if c in df_hist_pilote.columns]
+                                cols_hist = [c for c in ["DateRealisation", "Site", "Installation", "Désignation", "Observation", "Code", "Responsable"] if c in df_hist_pilote.columns]
                                 df_aff_hist = df_hist_pilote[cols_hist]
                                 if "DateRealisation" in df_aff_hist.columns:
                                     df_aff_hist = df_aff_hist.sort_values("DateRealisation", ascending=False)
