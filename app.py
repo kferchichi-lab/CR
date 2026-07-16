@@ -734,16 +734,18 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
                 f"L {p1i[0]:.2f} {p1i[1]:.2f} "
                 f"A {r_in:.2f} {r_in:.2f} 0 {large} 0 {p0i[0]:.2f} {p0i[1]:.2f} Z")
 
-    def _donut_chart(data, color_map, titre="", size=190):
+    def _donut_chart(data, color_map, titre="", size=190, show_pct_labels=True):
         """data: dict {label: valeur numérique}. Retourne (svg, legend_html).
         Les pourcentages des petites parts sont affichés à l'extérieur (avec un
         trait de rappel) pour rester lisibles ; les grandes parts gardent le
-        pourcentage centré à l'intérieur de l'anneau."""
+        pourcentage centré à l'intérieur de l'anneau.
+        show_pct_labels=False : n'affiche aucun pourcentage sur le graphique lui-même
+        (utile quand la légende à côté les affiche déjà, pour éviter la redondance)."""
         data = {k: v for k, v in data.items() if v and v > 0}
         total = sum(data.values())
         if not data or not total:
             return "", ""
-        pad = 34  # marge latérale pour les étiquettes extérieures
+        pad = 34 if show_pct_labels else 14  # marge latérale pour les étiquettes extérieures
         cx, cy = size / 2 + pad, size / 2 + 18
         r_out, r_in = size * 0.40, size * 0.40 * 0.58
         angle = 0.0
@@ -753,22 +755,23 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
             a1 = angle + pct / 100 * 360
             color = color_map.get(label, "#94A3B8")
             slices += f'<path d="{_donut_path(cx,cy,r_out,r_in,angle,a1)}" fill="{color}" stroke="#ffffff" stroke-width="1.5"/>'
-            mid = (angle + a1) / 2
-            if pct >= 6:
-                # part assez grande : pourcentage centré, en blanc, à l'intérieur de l'anneau
-                lx, ly = _polar(cx, cy, (r_out + r_in) / 2, mid)
-                labels += (f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="11" font-weight="700" '
-                           f'fill="#ffffff" text-anchor="middle" dominant-baseline="middle">{pct:.1f}%</text>')
-            else:
-                # petite part : trait de rappel + pourcentage à l'extérieur, dans la couleur de la part
-                p0 = _polar(cx, cy, r_out, mid)
-                p1 = _polar(cx, cy, r_out + 12, mid)
-                anchor = "start" if p1[0] >= cx else "end"
-                tx = p1[0] + (4 if anchor == "start" else -4)
-                labels += (f'<line x1="{p0[0]:.1f}" y1="{p0[1]:.1f}" x2="{p1[0]:.1f}" y2="{p1[1]:.1f}" '
-                           f'stroke="{color}" stroke-width="1.2"/>'
-                           f'<text x="{tx:.1f}" y="{p1[1]:.1f}" font-size="9.5" font-weight="700" '
-                           f'fill="{color}" text-anchor="{anchor}" dominant-baseline="middle">{pct:.1f}%</text>')
+            if show_pct_labels:
+                mid = (angle + a1) / 2
+                if pct >= 6:
+                    # part assez grande : pourcentage centré, en blanc, à l'intérieur de l'anneau
+                    lx, ly = _polar(cx, cy, (r_out + r_in) / 2, mid)
+                    labels += (f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="11" font-weight="700" '
+                               f'fill="#ffffff" text-anchor="middle" dominant-baseline="middle">{pct:.1f}%</text>')
+                else:
+                    # petite part : trait de rappel + pourcentage à l'extérieur, dans la couleur de la part
+                    p0 = _polar(cx, cy, r_out, mid)
+                    p1 = _polar(cx, cy, r_out + 12, mid)
+                    anchor = "start" if p1[0] >= cx else "end"
+                    tx = p1[0] + (4 if anchor == "start" else -4)
+                    labels += (f'<line x1="{p0[0]:.1f}" y1="{p0[1]:.1f}" x2="{p1[0]:.1f}" y2="{p1[1]:.1f}" '
+                               f'stroke="{color}" stroke-width="1.2"/>'
+                               f'<text x="{tx:.1f}" y="{p1[1]:.1f}" font-size="9.5" font-weight="700" '
+                               f'fill="{color}" text-anchor="{anchor}" dominant-baseline="middle">{pct:.1f}%</text>')
             angle = a1
         titre_svg = (f'<text x="{cx:.1f}" y="16" font-size="12.5" font-weight="700" fill="#0F172A" '
                      f'text-anchor="middle">{titre}</text>') if titre else ""
@@ -845,7 +848,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
         if df_n.empty or "Nature" not in df_n.columns or "Site" not in df_n.columns:
             return "", ""
         d = df_n[df_n["Site"] == site].groupby("Nature")["Nombre"].sum().to_dict()
-        return _donut_chart(d, COULEURS_NATURE, f"{site} — % par nature", size=185)
+        return _donut_chart(d, COULEURS_NATURE, f"{site} — % par nature", size=185, show_pct_labels=False)
 
     def _pilote_bar(site):
         if df_n.empty or "Pilote" not in df_n.columns or "Site" not in df_n.columns:
@@ -875,10 +878,13 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
         carto_html = f"""
         <div class="page">
             <div class="category-title">Taux de non-conformité des sites</div>
-            <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
+            <p style="font-size:10pt;color:#475569;margin-bottom:12px;">
             Cartographie de synthèse du taux de non-conformité par site et par installation,
             établie lors de la campagne de contrôle réglementaire 2026.</p>
-            <img src="data:image/png;base64,{carto_b64}" style="width:100%;border-radius:8px;border:1px solid #E2E8F0;"/>
+            <div style="text-align:center;">
+                <img src="data:image/png;base64,{carto_b64}" style="max-width:100%;max-height:150mm;width:auto;
+                    border-radius:8px;border:1px solid #E2E8F0;"/>
+            </div>
         </div>"""
 
     html_content = f"""
