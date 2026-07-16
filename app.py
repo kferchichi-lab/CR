@@ -984,17 +984,6 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
         Répartition des actions de contrôle relevées, par nature et par pilote, pour chaque site.</p>
 
-        <p style="font-weight:700;font-size:12pt;color:#0F172A;margin:10px 0 12px 0;">SGB</p>
-        <div style="display:flex;align-items:center;gap:25px;margin-bottom:25px;">
-            <div style="flex:0 0 auto;">
-                {sgb_nature_svg if sgb_nature_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
-            </div>
-            <div style="flex:0 0 150px;">{sgb_nature_legend}</div>
-            <div style="flex:1;">
-                <p style="font-size:9.5pt;font-weight:700;color:#64748B;margin:0 0 10px 0;text-transform:uppercase;">% par pilote</p>
-                {sgb_pilote_svg if sgb_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
-            </div>
-        </div>
 
         <p style="font-weight:700;font-size:12pt;color:#0F172A;margin:10px 0 12px 0;">MEG</p>
         <div style="display:flex;align-items:center;gap:25px;">
@@ -1007,6 +996,21 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
                 {meg_pilote_svg if meg_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
         </div>
+
+    
+        <p style="font-weight:700;font-size:12pt;color:#0F172A;margin:10px 0 12px 0;">SGB</p>
+        <div style="display:flex;align-items:center;gap:25px;margin-bottom:25px;">
+            <div style="flex:0 0 auto;">
+                {sgb_nature_svg if sgb_nature_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+            <div style="flex:0 0 150px;">{sgb_nature_legend}</div>
+            <div style="flex:1;">
+                <p style="font-size:9.5pt;font-weight:700;color:#64748B;margin:0 0 10px 0;text-transform:uppercase;">% par pilote</p>
+                {sgb_pilote_svg if sgb_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+        </div>
+
+        
     </div>
 
     </body></html>
