@@ -798,13 +798,13 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
         for label, pct in data_pct.items():
             color = color_map.get(label, "#F59E0B")
             rows += f"""
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:11px;">
-                <div style="flex:0 0 118px;font-size:9.3pt;font-weight:600;color:#334155;
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:11px;">
+                <div style="flex:0 0 150px;font-size:9.5pt;font-weight:600;color:#334155;
                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{label}</div>
-                <div style="flex:1;background:#E2E8F0;border-radius:5px;height:15px;overflow:hidden;">
+                <div style="flex:1;background:#E2E8F0;border-radius:5px;height:16px;overflow:hidden;">
                     <div style="height:100%;width:{pct}%;background:{color};border-radius:5px;"></div>
                 </div>
-                <div style="flex:0 0 48px;text-align:right;font-size:9.8pt;font-weight:800;color:#0F172A;">{pct:.1f}%</div>
+                <div style="flex:0 0 58px;text-align:right;font-size:10.5pt;font-weight:800;color:#0F172A;">{pct:.1f}%</div>
             </div>"""
         return rows
 
@@ -883,7 +883,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
 
     html_content = f"""
     <html><head><style>
-        @page {{ size: A4 portrait; margin: 20mm 15mm;
+        @page {{ size: A4 landscape; margin: 15mm 18mm;
             @bottom-right {{ content: "Page " counter(page) " / " counter(pages);
                 font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; font-size:9pt; color:#64748B; }} }}
         body {{ font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#1E293B; margin:0; padding:0; font-size:10pt; }}
@@ -927,7 +927,8 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
 
 
 
-        <div class="kpi-card" style="border-left-color:#0EA5E9;">
+        <div style="display:flex;gap:20px;align-items:stretch;">
+        <div class="kpi-card" style="border-left-color:#0EA5E9;flex:1;">
             <p class="kpi-title">1. Taux de réalisation 2026</p>
             <p class="kpi-desc">Proportion des visites réalisées dont l'écart entre la date réelle de contrôle
             et l'échéance théorique initiale du cycle n'excède pas 1 mois, par rapport au nombre total
@@ -938,7 +939,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
             — sur {k1['total']} visites planifiées</p>
         </div>
 
-         <div class="kpi-card">
+         <div class="kpi-card" style="flex:1;">
             <p class="kpi-title">2. Taux de respect de délai de visite</p>
             <p class="kpi-desc">Proportion des contrôles réglementaires dont l'échéance théorique est comprise
             entre le 01/01/2026 et le 31/12/2026, effectivement réalisés (date réelle de visite enregistrée)
@@ -947,7 +948,7 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
             {barre(k2['taux'], '#0EA5E9')}
             <p style="font-size:9pt;color:#64748B;margin-top:8px;">{k2['respectes']} respectés / {k2['respectes']} réalisés</p>
         </div>
-
+        </div>
 
     </div>
 
@@ -984,6 +985,17 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
         <p style="font-size:10pt;color:#475569;margin-bottom:15px;">
         Répartition des actions de contrôle relevées, par nature et par pilote, pour chaque site.</p>
 
+        <p style="font-weight:700;font-size:12pt;color:#0F172A;margin:10px 0 12px 0;">SGB</p>
+        <div style="display:flex;align-items:center;gap:25px;margin-bottom:25px;">
+            <div style="flex:0 0 auto;">
+                {sgb_nature_svg if sgb_nature_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+            <div style="flex:0 0 150px;">{sgb_nature_legend}</div>
+            <div style="flex:1;">
+                <p style="font-size:9.5pt;font-weight:700;color:#64748B;margin:0 0 10px 0;text-transform:uppercase;">% par pilote</p>
+                {sgb_pilote_svg if sgb_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
+            </div>
+        </div>
 
         <p style="font-weight:700;font-size:12pt;color:#0F172A;margin:10px 0 12px 0;">MEG</p>
         <div style="display:flex;align-items:center;gap:25px;">
@@ -996,21 +1008,6 @@ def generer_rapport_kpi_pdf(kpi_data, df_reserve, df_nature, carto_b64, logo_url
                 {meg_pilote_svg if meg_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
             </div>
         </div>
-
-    
-        <p style="font-weight:700;font-size:12pt;color:#0F172A;margin:10px 0 12px 0;">MEG</p>
-        <div style="display:flex;align-items:center;gap:25px;">
-            <div style="flex:0 0 auto;">
-                {meg_nature_svg if meg_nature_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
-            </div>
-            <div style="flex:0 0 150px;">{meg_nature_legend}</div>
-            <div style="flex:1;">
-                <p style="font-size:9.5pt;font-weight:700;color:#64748B;margin:0 0 10px 0;text-transform:uppercase;">% par pilote</p>
-                {meg_pilote_svg if meg_pilote_svg else "<p style='color:#94A3B8;font-size:9pt;'>Aucune donnée</p>"}
-            </div>
-        </div>
-
-        
     </div>
 
     </body></html>
@@ -3626,6 +3623,8 @@ if acces_autorise:
                     st.plotly_chart(fig,use_container_width=True,config={'displayModeBar':False})
 
                 if {"Nature","Pilote","Site","Nombre"}.issubset(df_nature_f.columns):
+                    g1, g2 = st.columns(2)
+                    with g1: _pie_nature_site(df_nature_f,"SGB",color_map_nat,"SGB — % par nature")
                     with g2: _bar_pilote_site(df_nature_f,"SGB",color_map_pil,"SGB — % par pilote")
                     g3,g4 = st.columns(2)
                     with g3: _pie_nature_site(df_nature_f,"MEG",color_map_nat,"MEG — % par nature")
