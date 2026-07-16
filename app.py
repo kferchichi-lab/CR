@@ -2780,7 +2780,7 @@ if acces_autorise:
                 fig_gauge = go.Figure(go.Indicator(
                     mode="gauge+number",
                     value=taux_global,
-                    number={'suffix': "%", 'font': {'size': 80, 'color': "#0F172A"}},
+                    number={'suffix': "%", 'font': {'size': 100, 'color': "#0F172A"}},
                     title={'text': f"Taux global {annee_ref_calendrier}", 'font': {'size': 14, 'color': "#334155"}},
                     gauge={
                         'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "#94A3B8"},
@@ -4212,7 +4212,7 @@ if acces_autorise:
                         st.markdown("<br><hr style='border-color:#E2E8F0;'>",unsafe_allow_html=True)
                         st.markdown(f"<p style='font-size:1.05rem;font-weight:700;color:#1E3A8A;'>📈 Analyse du suivi — {nom_responsable_suivi}</p>",unsafe_allow_html=True)
 
-                        gA, gB, gC = st.columns(3)
+                        gA, gB = st.columns(2)
 
                         # --- Graphe 1 : % Terminé vs En cours (pour le pilote sélectionné) ---
                         with gA:
@@ -4253,35 +4253,3 @@ if acces_autorise:
                                 st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
                             else:
                                 st.info("Aucune action en cours.")
-
-                        # --- Graphe 3 : répartition globale des tâches par responsable (tous sites/pilotes) ---
-                        with gC:
-                            if not df_codif_suivi.empty:
-                                compte_resp_global = {}
-                                for _, r_g in df_codif_suivi.iterrows():
-                                    pilote_str_g = NATURE_PILOTE.get(r_g.get("Code", ""), ("", ""))[1]
-                                    for e_g in str(pilote_str_g).split("+"):
-                                        e_g = e_g.strip()
-                                        if not e_g:
-                                            continue
-                                        compte_resp_global[e_g] = compte_resp_global.get(e_g, 0) + 1
-                                total_resp_global = sum(compte_resp_global.values())
-                                if compte_resp_global and total_resp_global:
-                                    df_g3 = pd.DataFrame({"Responsable": list(compte_resp_global.keys()),
-                                                           "Nombre": list(compte_resp_global.values())})
-                                    df_g3["Pourcentage"] = (df_g3["Nombre"]/total_resp_global*100).round(1)
-                                    df_g3 = df_g3.sort_values("Pourcentage", ascending=True)
-                                    palette_resp_g = px.colors.qualitative.Set1
-                                    color_map_resp_g = {p: palette_resp_g[i % len(palette_resp_g)] for i,p in enumerate(df_g3["Responsable"])}
-                                    fig3 = px.bar(df_g3, x="Pourcentage", y="Responsable", orientation="h", text="Pourcentage",
-                                                  color="Responsable", color_discrete_map=color_map_resp_g)
-                                    fig3.update_traces(texttemplate='%{text}%', textposition='outside', cliponaxis=False)
-                                    fig3.update_layout(title="Répartition par responsable", title_x=0.5, showlegend=False,
-                                                        xaxis_title="% des actions", yaxis_title="",
-                                                        margin=dict(t=40,b=10,l=10,r=30), height=300,
-                                                        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-                                    st.plotly_chart(fig3, use_container_width=True, config={'displayModeBar': False})
-                                else:
-                                    st.info("Aucune donnée.")
-                            else:
-                                st.info("Aucune donnée.")
