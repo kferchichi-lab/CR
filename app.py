@@ -1035,7 +1035,33 @@ def generer_rapport_pilote_pdf(pilote_choisi, df_filtre, logo_url):
     date_str = datetime.date.today().strftime('%d/%m/%Y')
     installations = list(dict.fromkeys(df_filtre["Installation"].tolist()))  # ordre stable, sans doublons
     total_general = len(df_filtre)
-    nom_responsable = SOUS_PILOTE_NOMS.get(pilote_choisi, pilote_choisi)
+
+    # Détermine le(s) site(s) présent(s) dans le périmètre filtré, afin d'afficher le bon
+    # sous-pilote (ex : Maintenance -> Chafik ABID pour SGB, Saber BEN CHAABEN pour MEG).
+    sites_presents = []
+    if "Site" in df_filtre.columns:
+        sites_presents = sorted({
+            str(s).strip().upper() for s in df_filtre["Site"].dropna().unique().tolist() if str(s).strip()
+        })
+
+    def _nom_pour_site(site_val):
+        return nom_pour_pilote_site(pilote_choisi, site_val)
+
+    if len(sites_presents) == 1:
+        nom_responsable = _nom_pour_site(sites_presents[0])
+    else:
+        # Plusieurs sites (ou site inconnu) dans le même rapport : on garde le libellé générique.
+        nom_responsable = _nom_pour_site(None)
+
+    # Nom du sous-pilote par installation (une installation appartient toujours à un seul site).
+    nom_par_installation = {}
+    for ins in installations:
+        site_ins = None
+        if "Site" in df_filtre.columns:
+            valeurs_site = df_filtre.loc[df_filtre["Installation"] == ins, "Site"].dropna().unique().tolist()
+            if len(valeurs_site) == 1:
+                site_ins = valeurs_site[0]
+        nom_par_installation[ins] = _nom_pour_site(site_ins)
 
     html_content = f"""
     <html>
@@ -1172,7 +1198,7 @@ def generer_rapport_pilote_pdf(pilote_choisi, df_filtre, logo_url):
             </div>
             <div class="header-title" style="border-bottom: none; padding-bottom: 0;">Plan d'actions - Contrôle réglementaire</div>
             <div class="meta-info">
-                <strong>Sous-pilote :</strong> {nom_responsable}<br>
+                <strong>Sous-pilote :</strong> {nom_par_installation.get(ins, nom_responsable)}<br>
                 <strong>Installation :</strong> {ins}<br>
                 <strong>Date d'édition :</strong> {date_str}
             </div>
