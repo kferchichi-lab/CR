@@ -2076,6 +2076,19 @@ SOUS_PILOTE_NOMS = {
     "DG":              "Aïcha BELLAKHAL",
 }
 
+def nom_pour_pilote_site(pilote, site=None):
+    """Renvoie le nom du responsable à afficher pour un pilote donné, en tenant compte du site
+    lorsque plusieurs responsables se partagent le même pilote (ex : Maintenance -> Saber pour MEG,
+    Chafik pour SGB)."""
+    if pilote == "Maintenance":
+        site_norm = (site or "").strip().upper()
+        if site_norm == "MEG":
+            return "Saber BEN CHAABEN"
+        if site_norm == "SGB":
+            return "Chafik ABID"
+        return "Maintenance (Saber BEN CHAABEN — MEG / Chafik ABID — SGB)"
+    return SOUS_PILOTE_NOMS.get(pilote, pilote)
+
 def lire_points_reserve_nature():
     """Lit l'onglet PointsReserveNature : Site | Installation | Nombre | Nature | Pilote."""
     return sheets_lire("PointsReserveNature", "A:E")
@@ -4031,7 +4044,7 @@ if acces_autorise:
                     e.strip() for v in NATURE_PILOTE.values() for e in v[1].split("+") if e.strip()
                 ))
                 pilote_suivi_choisi = st.selectbox("Responsable à suivre", entites_disponibles_suivi, key="pilote_suivi_admin")
-                nom_responsable_suivi = SOUS_PILOTE_NOMS.get(pilote_suivi_choisi, pilote_suivi_choisi)
+                nom_responsable_suivi = nom_pour_pilote_site(pilote_suivi_choisi, None)
                 site_resp_suivi = None
             else:
                 compte_resp_suivi = RESPONSABLES.get(st.session_state.responsable_actif, {})
@@ -4087,13 +4100,14 @@ if acces_autorise:
                     col_liste, col_graphe = st.columns([3, 1])
 
                     with col_liste:
-                        st.markdown(f"<p style='font-weight:700;font-size:14px;color:#0F172A;'>Actions restantes — {nom_responsable_suivi}</p>",unsafe_allow_html=True)
-
                         if df_restantes.empty:
+                            st.markdown(f"<p style='font-weight:700;font-size:14px;color:#0F172A;'>Actions restantes — {nom_responsable_suivi}</p>",unsafe_allow_html=True)
                             st.success("🎉 Toutes les actions de ce périmètre sont réalisées !")
                         else:
+                            site_f_suivi = "Tous"
                             if site_resp_suivi:
                                 # Compte restreint à un seul site : pas de sélecteur de site
+                                st.markdown(f"<p style='font-weight:700;font-size:14px;color:#0F172A;'>Actions restantes — {nom_responsable_suivi}</p>",unsafe_allow_html=True)
                                 df_apres_site_suivi = df_restantes
                                 installations_dispo_suivi = sorted(df_apres_site_suivi["Installation"].dropna().unique().tolist())
                                 install_f_suivi = st.selectbox("Installation", ["Toutes"]+installations_dispo_suivi, key="installation_filtre_suivi")
@@ -4102,11 +4116,25 @@ if acces_autorise:
                                 fcol1, fcol2 = st.columns(2)
                                 with fcol1:
                                     site_f_suivi = st.selectbox("Site", ["Tous"]+sites_dispo_suivi, key="site_filtre_suivi")
+                                if est_admin_suivi:
+                                    nom_responsable_suivi = nom_pour_pilote_site(pilote_suivi_choisi, None if site_f_suivi == "Tous" else site_f_suivi)
+                                st.markdown(f"<p style='font-weight:700;font-size:14px;color:#0F172A;'>Actions restantes — {nom_responsable_suivi}</p>",unsafe_allow_html=True)
                                 df_apres_site_suivi = df_restantes if site_f_suivi == "Tous" else df_restantes[df_restantes["Site"] == site_f_suivi]
                                 with fcol2:
                                     installations_dispo_suivi = sorted(df_apres_site_suivi["Installation"].dropna().unique().tolist())
                                     install_f_suivi = st.selectbox("Installation", ["Toutes"]+installations_dispo_suivi, key="installation_filtre_suivi")
                             df_affiche_suivi = df_apres_site_suivi if install_f_suivi == "Toutes" else df_apres_site_suivi[df_apres_site_suivi["Installation"] == install_f_suivi]
+
+                            # ---- Recalcul des statistiques (jauge + graphes) selon le site sélectionné ----
+                            site_effectif_stats = site_resp_suivi if site_resp_suivi else (None if site_f_suivi == "Tous" else site_f_suivi)
+                            if site_effectif_stats and "Site" in df_pilote_suivi.columns:
+                                df_pilote_suivi_stats = df_pilote_suivi[df_pilote_suivi["Site"].astype(str).str.strip().str.upper() == site_effectif_stats.upper()]
+                                df_restantes = df_restantes[df_restantes["Site"].astype(str).str.strip().str.upper() == site_effectif_stats.upper()]
+                            else:
+                                df_pilote_suivi_stats = df_pilote_suivi
+                            total_pilote = len(df_pilote_suivi_stats)
+                            nb_realisees = len(cles_faites_suivi & set(df_pilote_suivi_stats["Cle"]))
+                            taux = round((nb_realisees/total_pilote*100), 1) if total_pilote else 0.0
 
                             if not est_admin_suivi:
                                 # ---- Vue responsable : un tableau, avec colonnes Statut / Type de suivi / Commentaire ----
