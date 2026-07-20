@@ -2613,14 +2613,11 @@ if not acces_autorise and role=="Visiteur":
                     st.success("✅ Code envoyé. Vérifiez votre boîte e-mail (et vos spams).")
                     st.rerun()
                 elif "Configuration SMTP absente" in (erreur_envoi or ""):
-                    # Repli si l'administrateur n'a pas encore configuré le SMTP : on ne bloque
-                    # pas l'accès, mais on ne peut pas garantir que l'adresse est vérifiée.
-                    st.session_state.email_visiteur=email_saisi
-                    with st.spinner("Enregistrement de votre accès..."):
-                        succes,erreur=ecrire_log(email_saisi)
-                        mettre_a_jour_presence(email_saisi)
-                    st.warning("⚠️ Vérification par code indisponible (SMTP non configuré côté administrateur) — accès accordé sans confirmation de l'e-mail.")
-                    st.rerun()
+                    # L'administrateur n'a pas encore configuré le SMTP (section [smtp] absente
+                    # de secrets.toml) : on NE donne PLUS accès sans code, on bloque et on
+                    # explique clairement le problème pour que l'admin configure le SMTP.
+                    st.error("❌ Vérification par e-mail indisponible : le SMTP n'est pas configuré côté administrateur. "
+                             "L'accès visiteur ne peut pas être accordé tant que la section [smtp] n'est pas renseignée dans secrets.toml.")
                 else:
                     st.error(f"❌ Impossible d'envoyer le code : {erreur_envoi}")
     else:
