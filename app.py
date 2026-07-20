@@ -1724,7 +1724,49 @@ st.html("""<style>
             flex:1 1 100%!important;
         }
         div[data-testid="stMetricValue"]{font-size:22px!important;}
+        div[data-testid="stForm"],.stCornerRadius,[data-testid="stVVerticalBlockBorderBordered"]{padding:12px!important;}
+        .stButton>button{width:100%!important;padding:10px 14px!important;}
+        div[data-testid="stExpander"] summary p{font-size:13px!important;}
+        div[data-testid="stDataFrame"]{font-size:12px!important;}
+        .app-header-block p{font-size:0.85rem!important;}
     }
+
+    /* ================= COMPOSANTS NATIFS : FORCER LE THEME CLAIR ================= */
+    /* Ces éléments ne sont pas des <div> stylés par nos classes ci-dessus : quand le
+       navigateur/l'OS de l'utilisateur est en mode sombre, Streamlit leur applique ses
+       couleurs de thème sombre (fond noir, texte gris) qui entrent en conflit avec le
+       reste de l'appli resté en clair. On force donc explicitement du clair partout. */
+
+    /* Messages st.info / st.success / st.warning / st.error */
+    div[data-testid="stAlert"]{background-color:#F8FAFC!important;border-radius:8px!important;}
+    div[data-testid="stAlert"] p, div[data-testid="stAlert"] span{color:#0F172A!important;}
+
+    /* Tableaux st.dataframe / st.data_editor */
+    div[data-testid="stDataFrame"],div[data-testid="stDataEditor"]{background-color:#FFFFFF!important;}
+    div[data-testid="stDataFrame"] *, div[data-testid="stDataEditor"] *{color:#0F172A!important;}
+    div[data-testid="stDataFrame"] [data-testid="stHeader"]{background-color:#F1F5F9!important;}
+
+    /* Expanders (st.expander) */
+    div[data-testid="stExpander"] details{background-color:#FFFFFF!important;border:1px solid #E2E8F0!important;border-radius:10px!important;}
+    div[data-testid="stExpander"] summary p{color:#0F172A!important;}
+
+    /* Menus déroulants ouverts (BaseWeb select / popover, rendus hors du conteneur) */
+    ul[data-baseweb="menu"],div[data-baseweb="popover"]{background-color:#FFFFFF!important;}
+    ul[data-baseweb="menu"] li,ul[data-baseweb="menu"] li *{color:#0F172A!important;background-color:#FFFFFF!important;}
+    ul[data-baseweb="menu"] li:hover{background-color:#F1F5F9!important;}
+
+    /* Champs et cases à cocher */
+    div[data-testid="stCheckbox"] p,div[data-testid="stRadio"] p, label p{color:#0F172A!important;}
+    textarea,input{color:#0F172A!important;}
+    textarea::placeholder,input::placeholder{color:#94A3B8!important;}
+
+    /* Sidebar : forcer aussi le fond clair (sinon reste sombre en mode sombre système) */
+    [data-testid="stSidebar"]{background-color:#FFFFFF!important;}
+    [data-testid="stSidebar"] *{color:#0F172A!important;}
+
+    /* Cartes st.metric */
+    div[data-testid="stMetric"]{background-color:#FFFFFF!important;border:1px solid #E2E8F0!important;border-radius:10px!important;padding:10px!important;}
+    div[data-testid="stMetric"] label,div[data-testid="stMetricValue"],div[data-testid="stMetricDelta"]{color:#0F172A!important;}
 </style>""")
 
 st.markdown("""<style>
@@ -2254,6 +2296,15 @@ def visiteur_deja_verifie(email: str) -> bool:
     tracer sa présence/historique comme pour n'importe quelle connexion."""
     return sheets_trouver_ligne_email("Presence", email) is not None
 
+@st.cache_data(ttl=60, show_spinner=False)
+def _presence_toujours_active(email: str) -> bool:
+    """Comme visiteur_deja_verifie, mais mise en cache 60 s : sert à re-contrôler
+    périodiquement qu'un visiteur déjà connecté (dans la session en cours) figure
+    toujours dans l'onglet 'Presence'. Si l'administrateur a supprimé sa ligne
+    (ou vidé l'onglet), la prochaine vérification renverra False et son accès
+    sera révoqué : il devra ressaisir son e-mail et recevoir un nouveau code OTP."""
+    return sheets_trouver_ligne_email("Presence", email) is not None
+
 def lire_presence():
     df = sheets_lire("Presence","A:C")
     if df.empty: return pd.DataFrame(columns=["Email","Derniere_activite","Statut","Activite"])
@@ -2542,6 +2593,16 @@ with st.sidebar:
 # ==========================================
 def format_email_valide(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+",email) is not None
+
+# ---- Ré-évaluation du visiteur : si l'admin a supprimé sa ligne dans "Presence"
+# (par ex. après avoir vidé les onglets Presence/Logs), on révoque son accès en session
+# et on efface l'état OTP résiduel afin qu'un nouveau code lui soit redemandé. ----
+if role == "Visiteur" and st.session_state.get("email_visiteur"):
+    if not _presence_toujours_active(st.session_state.email_visiteur):
+        st.session_state.email_visiteur = None
+        st.session_state["otp_code"] = None
+        st.session_state["otp_email"] = None
+        st.session_state["otp_expire_a"] = 0
 
 acces_autorise=(role=="Admin" and password_correct) or (role=="Responsable" and st.session_state.responsable_connecte) or (role=="Visiteur" and st.session_state.email_visiteur)
 
