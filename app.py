@@ -104,9 +104,9 @@ def utilisateur_courant() -> str:
         if role == "Admin" and password_correct:
             return "Admin"
         if role == "Responsable" and st.session_state.get("responsable_connecte"):
-            return f"Responsable:{st.session_state.get('responsable_actif','?')}"
+            return f"Responsable : {st.session_state.get('responsable_actif','?')}"
         if role == "Visiteur" and st.session_state.get("email_visiteur"):
-            return f"Visiteur:{st.session_state.get('email_visiteur')}"
+            return f"Visiteur : {st.session_state.get('email_visiteur')}"
     except NameError:
         pass
     return "inconnu"
