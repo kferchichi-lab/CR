@@ -3876,7 +3876,11 @@ if acces_autorise:
                         apply();
                     }}
 
-                    if(img.complete && img.naturalWidth){{ fitToView(); }}
+                    function tryFit(attempts){{
+                        if(img.naturalWidth){{ fitToView(); }}
+                        else if(attempts>0){{ setTimeout(function(){{ tryFit(attempts-1); }}, 30); }}
+                    }}
+                    tryFit(100);
                     img.addEventListener('load', fitToView);
 
                     document.getElementById('carto-zoom-in').addEventListener('click', function(){{ zoom(1.25); }});
@@ -4841,4 +4845,3 @@ if acces_autorise:
                                 st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
                             else:
                                 st.info("Aucune action en cours.")
-                                
